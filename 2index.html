@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - భవిష్యవాణి | విశ్వనేత్ర AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    
+    <style>
+        body { background-color: #050505; color: #FFD700; font-family: 'Arial', sans-serif; margin: 0; text-align: center; }
+        
+        /* --- హెడర్ & లోగో --- */
+        .header { padding: 30px; background: linear-gradient(to bottom, #1a1a1a, #050505); border-bottom: 2px solid #333; }
+        .logo-circle { width: 90px; height: 90px; border: 3px solid #FFD700; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: 0 0 20px #FFD70066; }
+        .eye-icon { width: 50px; height: 25px; background: white; border-radius: 50% 50%; position: relative; }
+        .eye-pupil { width: 18px; height: 18px; background: #00ffcc; border-radius: 50%; position: absolute; left: 16px; top: 4px; box-shadow: 0 0 10px #00ffcc; }
+
+        /* --- మెయిన్ కంటెంట్ --- */
+        .container { padding: 20px; max-width: 800px; margin: 0 auto; }
+        .vision-box { background: #111; border: 2px solid #00ffcc; border-radius: 15px; padding: 20px; margin: 30px 0; position: relative; }
+        video { width: 100%; border-radius: 10px; background: #000; transform: scaleX(1); } /* సెల్ఫీ మోడ్ కాదు, నేరుగా చూసేలా */
+        canvas { position: absolute; top: 20px; left: 20px; pointer-events: none; }
+
+        /* --- బటన్లు --- */
+        .btn { background: #FFD700; color: #000; border: none; padding: 15px 40px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; margin: 10px; }
+        .btn:hover { background: #fff; box-shadow: 0 0 20px #FFD700; }
+        
+        /* --- గ్యాలరీ --- */
+        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+        .gallery img { width: 100%; border-radius: 8px; border: 1px solid #444; }
+
+        #status { font-weight: bold; color: #00ffcc; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="logo-circle"><div class="eye-icon"><div class="eye-pupil"></div></div></div>
+    <h1>STGV - భవిష్యవాణి</h1>
+    <p>ప్రాచీన శిల్పకళా జ్ఞానం + ఆధునిక AI సాంకేతికత</p>
+</div>
+
+<div class="container">
+    <h2>మా గురించి</h2>
+    <p style="color: #ccc; line-height: 1.6;">నేను ఒక రాతి శిల్పిని. రాయిని చెక్కి రూపం ఇచ్చినట్లే, ఈ "విశ్వనేత్ర AI" ద్వారా చూపు లేని వారికి వస్తువులను గుర్తించి చెప్పే ప్రయత్నం చేస్తున్నాను.</p>
+
+    <div class="vision-box">
+        <h3 style="color: #00ffcc;">👁️ విశ్వనేత్ర లైవ్ విజన్</h3>
+        <p id="status">సిస్టమ్ సిద్ధంగా ఉంది...</p>
+        <video id="webcam" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        <br>
+        <button class="btn" onclick="startAI()">విజన్ ప్రారంభించండి</button>
+    </div>
+
+    <h2>నా రాతి శిల్పకళా నైపుణ్యం</h2>
+    <div class="gallery">
+        <img src="IMG-20260225-WA0037.jpg" alt="Stone 1">
+        <img src="IMG-20260225-WA0030.jpg" alt="Stone 2">
+        <img src="IMG-20260225-WA0006.jpg" alt="Stone 3">
+        <img src="IMG-20251120-WA0008.jpg" alt="Stone 4">
+    </div>
+</div>
+
+<footer style="padding: 40px; color: #666;">
+    <p>&copy; 2026 STGV - భవిష్యవాణి | శైదు తిరుమలేష్ సమర్పణ</p>
+</footer>
+
+<script>
+    let model;
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+
+    // 1. AI మోడల్ లోడ్ చేయడం
+    async function loadModel() {
+        status.innerText = "AI మోడల్ లోడ్ అవుతోంది... ఆగండి...";
+        model = await cocossd.load();
+        status.innerText = "మోడల్ రెడీ! ఇప్పుడు బటన్ నొక్కండి.";
+    }
+    loadModel();
+
+    // 2. కెమెరా ప్రారంభించడం (మొబైల్ కోసం ప్రత్యేకంగా)
+    async function startAI() {
+        try {
+            status.innerText = "కెమెరా పర్మిషన్ అడుగుతోంది...";
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }, // బ్యాక్ కెమెరా
+                audio: false
+            });
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                status.innerText = "విశ్వనేత్ర చూస్తోంది...";
+                detectFrame();
+                speak("విశ్వనేత్ర ప్రారంభించబడింది");
+            };
+        } catch (err) {
+            status.innerText = "ఎర్రర్: కెమెరా పర్మిషన్ ఇవ్వలేదు లేదా HTTPS వాడటం లేదు.";
+            console.error(err);
+        }
+    }
+
+    // 3. వస్తువులను గుర్తించడం
+    async function detectFrame() {
+        const predictions = await model.detect(video);
+        renderPredictions(predictions);
+        requestAnimationFrame(detectFrame);
+    }
+
+    function renderPredictions(predictions) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        predictions.forEach(prediction => {
+            // బాక్స్ గీయడం
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(...prediction.bbox);
+
+            // పేరు రాయడం
+            ctx.fillStyle = "#00ffcc";
+            ctx.font = "20px Arial";
+            const teluguName = translate(prediction.class);
+            ctx.fillText(teluguName, prediction.bbox[0], prediction.bbox[1] - 10);
+            
+            // వాయిస్ వినిపించడం (ఒకసారి మాత్రమే చెప్పేలా)
+            if(!window.speechSynthesis.speaking) {
+                speak("మీ ముందు " + teluguName + " ఉంది");
+            }
+        });
+    }
+
+    // తెలుగు అనువాదం
+    function translate(label) {
+        const words = {
+            "person": "మనిషి", "cell phone": "ఫోన్", "laptop": "ల్యాప్‌టాప్",
+            "bottle": "బాటిల్", "chair": "కుర్చీ", "cup": "కప్పు", "remote": "రిమోట్"
+        };
+        return words[label] || label;
+    }
+
+    // వాయిస్ ఫంక్షన్
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'te-IN';
+        window.speechSynthesis.speak(msg);
+    }
+</script>
+
+</body>
+</html>
