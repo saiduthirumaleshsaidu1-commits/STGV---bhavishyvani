@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STGV - విశ్వనేత్ర AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+    
+    <style>
+        :root { --gold: #FFD700; --neon: #00ffcc; --bg: #0a0a0a; }
+        body { background-color: var(--bg); color: var(--gold); font-family: sans-serif; margin: 0; text-align: center; }
+        .header { padding: 15px; border-bottom: 2px solid var(--gold); background: #111; }
+        .vision-box { position: relative; width: 92%; margin: 15px auto; border: 2px solid var(--neon); border-radius: 12px; overflow: hidden; aspect-ratio: 4/3; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #status { font-size: 1rem; color: var(--neon); margin: 10px; font-weight: bold; }
+        .btn { background: var(--gold); color: #000; border: none; padding: 18px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer; width: 85%; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); margin-bottom: 20px; }
+        .info-card { padding: 15px; text-align: left; background: #151515; margin: 15px; border-radius: 10px; border-left: 4px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2 style="margin:0;">విశ్వనేత్ర AI</h2>
+    <p style="margin:5px 0 0 0; font-size:0.8rem; color:#888;">STGV భవిష్యవాణి - సాదు తిరుమలేష్ ఆవిష్కరణ</p>
+</div>
+
+<div id="status">AI ఇంజిన్ సిద్ధమవుతోంది...</div>
+
+<div class="vision-box">
+    <video id="webcam" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
+</div>
+
+<button class="btn" onclick="startVision()">విజన్ ప్రారంభించండి</button>
+
+<div class="info-card">
+    <h3 style="margin:0 0 5px 0; font-size: 1rem;">ప్రాజెక్ట్ లక్ష్యం:</h3>
+    <p style="margin:0; font-size:0.85rem; color:#ccc;">నేను ఒక రాతి శిల్పిని. చూపు లేని వారికి వస్తువులను గుర్తించి చెప్పేలా ఈ 'విశ్వనేత్ర'ను రూపొందించాను.</p>
+</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+    let model;
+
+    // 1. Lite మోడల్ లోడ్ చేయడం
+    async function loadModel() {
+        try {
+            status.innerText = "AI ని డౌన్‌లోడ్ చేస్తున్నాను...";
+            // వేగంగా లోడ్ అయ్యేలా 'lite_mobilenet_v2' వాడుతున్నాం
+            model = await cocossd.load({ base: 'lite_mobilenet_v2' });
+            status.innerText = "విశ్వనేత్ర సిద్ధంగా ఉంది!";
+            status.style.color = "#FFD700";
+        } catch (err) {
+            status.innerText = "నెట్‌వర్క్ స్లోగా ఉంది. మళ్ళీ ప్రయత్నించండి.";
+            console.error(err);
+        }
+    }
+    loadModel();
+
+    // 2. కెమెరా పర్మిషన్ మరియు స్టార్ట్
+    async function startVision() {
+        if (!model) { alert("AI ఇంకా లోడ్ అవుతోంది, దయచేసి ఆగండి."); return; }
+        
+        try {
+            status.innerText = "కెమెరాను ఓపెన్ చేస్తున్నాను...";
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }, // బ్యాక్ కెమెరా కోసం
+                audio: false
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                status.innerText = "విశ్వనేత్ర చూస్తోంది...";
+                detect();
+            };
+        } catch (err) {
+            status.innerText = "కెమెరా పర్మిషన్ లభించలేదు.";
+            alert("బ్రౌజర్ సెట్టింగ్స్‌లో కెమెరా అనుమతి ఇవ్వండి.");
+        }
+    }
+
+    // 3. వస్తువుల గుర్తింపు
+    async function detect() {
+        const predictions = await model.detect(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        predictions.forEach(p => {
+            // బోర్డర్ గీయడం
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]);
+            
+            // పేరు రాయడం
+            const name = translate(p.class);
+            ctx.fillStyle = "#00ffcc";
+            ctx.font = "bold 22px Arial";
+            ctx.fillText(name, p.bbox[0], p.bbox[1] > 25 ? p.bbox[1] - 10 : 25);
+
+            // వాయిస్ ఫీడ్‌బ్యాక్
+            if (!window.speechSynthesis.speaking) {
+                speak("మీ ముందు " + name + " ఉంది");
+            }
+        });
+        requestAnimationFrame(detect);
+    }
+
+    // తెలుగు పేర్లు
+    function translate(t) {
+        const d = { 
+            "person": "మనిషి", "cell phone": "మొబైల్ ఫోన్", "bottle": "బాటిల్", 
+            "chair": "कुర్చీ", "laptop": "ల్యాప్‌టాప్", "remote": "రిమోట్",
+            "cup": "కప్పు", "book": "పుస్తకం"
+        };
+        return d[t] || t;
+    }
+
+    function speak(txt) {
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = 'te-IN';
+        u.rate = 1.0;
+        window.speechSynthesis.speak(u);
+    }
+</script>
+
+</body>
+</html>
