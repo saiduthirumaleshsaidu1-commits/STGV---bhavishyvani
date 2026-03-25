@@ -145,5 +145,78 @@
         window.speechSynthesis.speak(msg);
     }
 </script>
+    <script>
+    let model;
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+
+    // 1. మోడల్ లోడ్ అయ్యిందో లేదో ముందే చెక్ చేయడం
+    async function loadModel() {
+        try {
+            status.innerText = "AI మోడల్ సిద్ధమవుతోంది...";
+            model = await cocossd.load();
+            status.innerText = "విశ్వనేత్ర సిద్ధంగా ఉంది. బటన్ నొక్కండి.";
+        } catch (e) {
+            status.innerText = "మోడల్ లోడ్ కాలేదు. ఇంటర్నెట్ చెక్ చేయండి.";
+            console.error(e);
+        }
+    }
+    loadModel();
+
+    // 2. బటన్ క్లిక్ చేసినప్పుడు పనిచేసే ఫంక్షన్
+    async function startAI() {
+        if (!model) {
+            alert("AI మోడల్ ఇంకా లోడ్ అవుతోంది. దయచేసి 5 సెకన్లు ఆగండి.");
+            return;
+        }
+
+        status.innerText = "కెమెరా అనుమతి కోరుతున్నాను...";
+
+        const constraints = {
+            video: { 
+                facingMode: "environment",
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        };
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = () => {
+                video.play();
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                status.innerText = "విశ్వనేత్ర చూస్తోంది!";
+                detectFrame();
+            };
+        } catch (err) {
+            status.innerText = "ఎర్రర్: కెమెరా పర్మిషన్ నిరాకరించబడింది.";
+            alert("దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో కెమెరాను అనుమతించండి (Allow).");
+            console.error(err);
+        }
+    }
+
+    async function detectFrame() {
+        const predictions = await model.detect(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        predictions.forEach(p => {
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(...p.bbox);
+            
+            ctx.fillStyle = "#00ffcc";
+            ctx.font = "20px Arial";
+            ctx.fillText(p.class, p.bbox[0], p.bbox[1] > 20 ? p.bbox[1] - 10 : 20);
+        });
+        requestAnimationFrame(detectFrame);
+    }
+    </script>
+    
 </body>
 </html>
