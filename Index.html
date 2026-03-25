@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - భవిష్యవాణి | విశ్వనేత్ర AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { background-color: #050505; color: #FFD700; font-family: Arial, sans-serif; text-align: center; margin: 0; }
+        .container { padding: 15px; }
+        .vision-box { position: relative; background: #000; border: 2px solid #00ffcc; border-radius: 10px; overflow: hidden; margin-top: 20px; }
+        video { width: 100%; display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .btn { background: #FFD700; color: #000; border: none; padding: 15px 30px; font-weight: bold; border-radius: 50px; margin: 20px 0; }
+        #status { color: #00ffcc; font-weight: bold; margin: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>STGV - భవిష్యవాణి</h1>
+    <div class="vision-box">
+        <p id="status">AI లోడ్ అవుతోంది... ఆగండి...</p>
+        <video id="webcam" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+    </div>
+    <button class="btn" onclick="startVision()">విజన్ ప్రారంభించండి</button>
+</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+    let model;
+
+    // 1. AI మోడల్ లోడ్ చేయడం
+    async function init() {
+        try {
+            model = await cocossd.load();
+            status.innerText = "సిస్టమ్ సిద్ధంగా ఉంది. బటన్ నొక్కండి.";
+        } catch (e) {
+            status.innerText = "AI లోడింగ్ ఎర్రర్. ఇంటర్నెట్ చూడండి.";
+        }
+    }
+    init();
+
+    // 2. విజన్ ప్రారంభించడం
+    async function startVision() {
+        if (!model) return alert("మోడల్ లోడ్ అయ్యే వరకు ఆగండి.");
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                // కాన్వాస్ సైజు సెట్ చేయడం
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                status.innerText = "విశ్వనేత్ర చూస్తోంది...";
+                detectObjects(); // ఇక్కడ ప్రాసెసింగ్ మొదలవుతుంది
+            };
+        } catch (err) {
+            status.innerText = "కెమెరా ఎర్రర్. పర్మిషన్ ఇవ్వండి.";
+        }
+    }
+
+    // 3. వస్తువుల గుర్తింపు (ఇదే అసలు ప్రాసెసింగ్)
+    async function detectObjects() {
+        // వీడియో ప్లే అవుతున్నంత కాలం ఇది తిరుగుతూనే ఉంటుంది
+        const predictions = await model.detect(video);
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        predictions.forEach(p => {
+            // బాక్స్ గీయడం
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 5;
+            ctx.strokeRect(p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]);
+            
+            // పేరు రాయడం
+            ctx.fillStyle = "#00ffcc";
+            ctx.font = "24px Arial";
+            ctx.fillText(p.class, p.bbox[0], p.bbox[1] > 20 ? p.bbox[1] - 10 : 20);
+        });
+
+        // మళ్ళీ మళ్ళీ రన్ అవ్వడానికి (Loop)
+        requestAnimationFrame(detectObjects);
+    }
+</script>
+</body>
+</html>
