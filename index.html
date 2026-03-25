@@ -7,102 +7,71 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        body { background-color: #050505; color: #FFD700; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; text-align: center; }
-        .header { padding: 30px; background: linear-gradient(to bottom, #1a1a1a, #050505); border-bottom: 2px solid #333; }
-        .logo-circle { width: 80px; height: 80px; border: 2px solid #FFD700; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: 0 0 15px #FFD70066; }
-        .eye-pupil { width: 15px; height: 15px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 10px #00ffcc; }
-        .container { padding: 20px; max-width: 800px; margin: 0 auto; }
-        .vision-box { background: #111; border: 2px solid #00ffcc; border-radius: 15px; padding: 15px; margin: 25px 0; position: relative; min-height: 250px; overflow: hidden; }
-        video { width: 100%; border-radius: 10px; background: #000; display: block; }
-        canvas { position: absolute; top: 15px; left: 15px; pointer-events: none; width: calc(100% - 30px); height: auto; }
-        .btn { background: #FFD700; color: #000; border: none; padding: 12px 35px; font-size: 1rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; margin: 15px 0; }
-        .btn:hover { background: #fff; transform: scale(1.05); }
-        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 20px; }
-        .gallery img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #444; transition: 0.3s; }
-        .gallery img:hover { border-color: #FFD700; }
-        #status { font-weight: bold; color: #00ffcc; margin: 10px 0; font-size: 0.9rem; }
+        body { background-color: #050505; color: #FFD700; font-family: Arial, sans-serif; text-align: center; margin: 0; }
+        .container { padding: 15px; }
+        .vision-box { position: relative; background: #000; border: 2px solid #00ffcc; border-radius: 10px; overflow: hidden; margin-top: 20px; }
+        video { width: 100%; display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .btn { background: #FFD700; color: #000; border: none; padding: 15px 30px; font-weight: bold; border-radius: 50px; margin: 20px 0; }
+        #status { color: #00ffcc; font-weight: bold; margin: 10px; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="logo-circle"><div class="eye-pupil"></div></div>
-    <h1>STGV - భవిష్యవాణి</h1>
-    <p>రాతి శిల్పకళా జ్ఞానం + ఆధునిక AI సాంకేతికత</p>
-</div>
-
 <div class="container">
-    <div id="about">
-        <h2>మా గురించి</h2>
-        <p style="color: #ccc; line-height: 1.6; text-align: left; padding: 0 10px;">నేను ఒక సాధారణ రాతి శిల్పిని. బేతంచెర్ల రాళ్లను చెక్కుతూనే, ఈ <b>విశ్వనేత్ర AI</b> ద్వారా అంధత్వానికి ఒక సాంకేతిక పరిష్కారం చూపాలని ప్రయత్నిస్తున్నాను. రాయికి ప్రాణం పోసినట్లే, టెక్నాలజీకి చూపునివ్వడమే నా లక్ష్యం.</p>
-    </div>
-
+    <h1>STGV - భవిష్యవాణి</h1>
     <div class="vision-box">
-        <h3 style="color: #00ffcc; margin-top: 0;">👁️ విశ్వనేత్ర లైవ్ విజన్</h3>
-        <p id="status">సిస్టమ్ సిద్ధంగా ఉంది. బటన్ నొక్కండి...</p>
+        <p id="status">AI లోడ్ అవుతోంది... ఆగండి...</p>
         <video id="webcam" autoplay muted playsinline></video>
         <canvas id="canvas"></canvas>
-        <button class="btn" onclick="startAI()">విజన్ ప్రారంభించండి</button>
     </div>
-
-    <h2>నా రాతి శిల్పకళా నైపుణ్యం</h2>
-    <div class="gallery">
-        <img src="IMG-20260225-WA0037.jpg" alt="Art 1">
-        <img src="IMG-20260225-WA0030.jpg" alt="Art 2">
-        <img src="IMG-20260225-WA0043.jpg" alt="Art 3">
-        <img src="IMG-20260225-WA0067.jpg" alt="Art 4">
-    </div>
+    <button class="btn" onclick="startVision()">విజన్ ప్రారంభించండి</button>
 </div>
 
-<footer style="padding: 30px; color: #555; font-size: 0.8rem; border-top: 1px solid #222; margin-top: 40px;">
-    <p>&copy; 2026 STGV - భవిష్యవాణి | శైదు తిరుమలేష్ సమర్పణ</p>
-</footer>
-
 <script>
-    let model;
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
     const ctx = canvas.getContext('2d');
+    let model;
 
     // 1. AI మోడల్ లోడ్ చేయడం
-    async function loadModel() {
-        status.innerText = "AI మోడల్ లోడ్ అవుతోంది... దయచేసి ఆగండి.";
+    async function init() {
         try {
             model = await cocossd.load();
-            status.innerText = "సిస్టమ్ సిద్ధంగా ఉంది. విజన్ ప్రారంభించండి!";
+            status.innerText = "సిస్టమ్ సిద్ధంగా ఉంది. బటన్ నొక్కండి.";
         } catch (e) {
-            status.innerText = "మోడల్ లోడ్ చేయడంలో విఫలం. ఇంటర్నెట్ చెక్ చేయండి.";
+            status.innerText = "AI లోడింగ్ ఎర్రర్. ఇంటర్నెట్ చూడండి.";
         }
     }
-    loadModel();
+    init();
 
-    // 2. కెమెరా ఆన్ చేయడం
-    async function startAI() {
-        status.innerText = "కెమెరాను వెతుకుతున్నాను...";
-        const constraints = {
-            video: { facingMode: "environment" }, // బ్యాక్ కెమెరా
-            audio: false
-        };
+    // 2. విజన్ ప్రారంభించడం
+    async function startVision() {
+        if (!model) return alert("మోడల్ లోడ్ అయ్యే వరకు ఆగండి.");
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+                audio: false
+            });
             video.srcObject = stream;
             video.onloadedmetadata = () => {
+                video.play();
+                // కాన్వాస్ సైజు సెట్ చేయడం
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                status.innerText = "విశ్వనేత్ర చూస్తోంది!";
-                detectFrame();
+                status.innerText = "విశ్వనేత్ర చూస్తోంది...";
+                detectObjects(); // ఇక్కడ ప్రాసెసింగ్ మొదలవుతుంది
             };
         } catch (err) {
-            status.innerText = "కెమెరా ఓపెన్ కాలేదు. బ్రౌజర్ సెట్టింగ్స్ లో Allow చేయండి.";
-            console.error(err);
+            status.innerText = "కెమెరా ఎర్రర్. పర్మిషన్ ఇవ్వండి.";
         }
     }
 
-    // 3. వస్తువులను గుర్తించడం
-    async function detectFrame() {
-        if (!model) return;
+    // 3. వస్తువుల గుర్తింపు (ఇదే అసలు ప్రాసెసింగ్)
+    async function detectObjects() {
+        // వీడియో ప్లే అవుతున్నంత కాలం ఇది తిరుగుతూనే ఉంటుంది
         const predictions = await model.detect(video);
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -110,113 +79,18 @@
         predictions.forEach(p => {
             // బాక్స్ గీయడం
             ctx.strokeStyle = "#00ffcc";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(...p.bbox);
+            ctx.lineWidth = 5;
+            ctx.strokeRect(p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]);
             
             // పేరు రాయడం
             ctx.fillStyle = "#00ffcc";
             ctx.font = "24px Arial";
-            const label = translate(p.class);
-            ctx.fillText(label, p.bbox[0], p.bbox[1] > 20 ? p.bbox[1] - 10 : 20);
-
-            // వాయిస్ ఫీడ్‌బ్యాక్ (ఒక్కొక్కటిగా చెప్పేలా)
-            if(!window.speechSynthesis.speaking) {
-                speakText("మీ ముందు " + label + " ఉంది");
-            }
-        });
-        
-        requestAnimationFrame(detectFrame);
-    }
-
-    // తెలుగు అనువాదం
-    function translate(eng) {
-        const dict = {
-            "person": "మనిషి", "cell phone": "ఫోన్", "bottle": "బాటిల్",
-            "chair": "కుర్చీ", "laptop": "ల్యాప్‌టాప్", "remote": "రిమోట్",
-            "book": "పుస్తకం", "cup": "కప్పు"
-        };
-        return dict[eng] || eng;
-    }
-
-    // వాయిస్ ఫంక్షన్
-    function speakText(text) {
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'te-IN';
-        window.speechSynthesis.speak(msg);
-    }
-</script>
-    <script>
-    let model;
-    const video = document.getElementById('webcam');
-    const canvas = document.getElementById('canvas');
-    const status = document.getElementById('status');
-    const ctx = canvas.getContext('2d');
-
-    // 1. మోడల్ లోడ్ అయ్యిందో లేదో ముందే చెక్ చేయడం
-    async function loadModel() {
-        try {
-            status.innerText = "AI మోడల్ సిద్ధమవుతోంది...";
-            model = await cocossd.load();
-            status.innerText = "విశ్వనేత్ర సిద్ధంగా ఉంది. బటన్ నొక్కండి.";
-        } catch (e) {
-            status.innerText = "మోడల్ లోడ్ కాలేదు. ఇంటర్నెట్ చెక్ చేయండి.";
-            console.error(e);
-        }
-    }
-    loadModel();
-
-    // 2. బటన్ క్లిక్ చేసినప్పుడు పనిచేసే ఫంక్షన్
-    async function startAI() {
-        if (!model) {
-            alert("AI మోడల్ ఇంకా లోడ్ అవుతోంది. దయచేసి 5 సెకన్లు ఆగండి.");
-            return;
-        }
-
-        status.innerText = "కెమెరా అనుమతి కోరుతున్నాను...";
-
-        const constraints = {
-            video: { 
-                facingMode: "environment",
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
-        };
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = stream;
-            
-            video.onloadedmetadata = () => {
-                video.play();
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                status.innerText = "విశ్వనేత్ర చూస్తోంది!";
-                detectFrame();
-            };
-        } catch (err) {
-            status.innerText = "ఎర్రర్: కెమెరా పర్మిషన్ నిరాకరించబడింది.";
-            alert("దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో కెమెరాను అనుమతించండి (Allow).");
-            console.error(err);
-        }
-    }
-
-    async function detectFrame() {
-        const predictions = await model.detect(video);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        predictions.forEach(p => {
-            ctx.strokeStyle = "#00ffcc";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(...p.bbox);
-            
-            ctx.fillStyle = "#00ffcc";
-            ctx.font = "20px Arial";
             ctx.fillText(p.class, p.bbox[0], p.bbox[1] > 20 ? p.bbox[1] - 10 : 20);
         });
-        requestAnimationFrame(detectFrame);
+
+        // మళ్ళీ మళ్ళీ రన్ అవ్వడానికి (Loop)
+        requestAnimationFrame(detectObjects);
     }
-    </script>
-    
+</script>
 </body>
 </html>
