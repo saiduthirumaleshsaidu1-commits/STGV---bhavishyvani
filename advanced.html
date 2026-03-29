@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>విశ్వనేత్ర - మనిషిలా వివరించే AI</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #000; color: #fff; text-align: center; margin: 0; }
+        .header { background: #1a1a1a; padding: 15px; border-bottom: 2px solid #FFD700; position: relative; }
+        .back-btn { position: absolute; left: 10px; top: 15px; color: #FFD700; text-decoration: none; font-size: 18px; }
+        #video-container { width: 90%; max-width: 500px; margin: 20px auto; border: 2px solid #444; border-radius: 15px; overflow: hidden; }
+        video { width: 100%; display: block; background: #222; }
+        .status-box { background: #111; margin: 15px; padding: 20px; border-radius: 10px; border: 1px solid #FFD700; min-height: 80px; font-size: 18px; line-height: 1.6; }
+        .btn-describe { background-color: #FFD700; color: #000; padding: 20px; width: 80%; font-size: 20px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); }
+        .footer { margin-top: 20px; font-size: 12px; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="index.html" class="back-btn">⬅ వెనక్కి</a>
+    <h2 style="color: #FFD700; margin: 0;">విశ్వనేత్ర అడ్వాన్స్‌డ్</h2>
+</div>
+
+<div id="video-container">
+    <video id="webcam" autoplay playsinline muted></video>
+</div>
+
+<div id="status" class="status-box">పైన ఉన్న కెమెరా వైపు చూపిస్తూ కింద ఉన్న బటన్ నొక్కండి. నేను ఆ దృశ్యాన్ని వివరిస్తాను.</div>
+
+<button class="btn-describe" onclick="describeScene()">మొత్తం వివరించు (AI Voice)</button>
+
+<div class="footer">STGV - Bhavishyavani Project | సైదు తిరుమలేష్</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const status = document.getElementById('status');
+    let lastDescription = "";
+
+    // కెమెరా ప్రారంభం
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+        } catch (err) {
+            status.innerText = "కెమెరా ఓపెన్ కాలేదు. పర్మిషన్లు చెక్ చేయండి.";
+        }
+    }
+
+    // మనిషిలా వివరించే ఫీచర్ (Gemini AI API)
+    async function describeScene() {
+        // ఇక్కడ మీ ఉచిత API Key ని పేస్ట్ చేయండి
+        const API_KEY = "AIzaSyDuE9b7fE-Z1tlCp9aC45KgXWtp21NakN"; 
+
+        if (API_KEY === "ఇక్కడ_మీ_API_KEY_పెట్టండి") {
+            alert("ముందుగా Google AI Studio లో ఉచిత API Key తీసుకోండి.");
+            return;
+        }
+
+        status.innerText = "పరిశీలిస్తున్నాను... ఒక్క నిమిషం ఆగండి.";
+        speak("పరిశీలిస్తున్నాను, ఒక్క నిమిషం వేచి ఉండండి.");
+
+        // ప్రస్తుత ఫోటోను క్యాప్చర్ చేయడం
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        const data = {
+            contents: [{
+                parts: [
+                    { text: "నువ్వు ఒక అంధుడికి సహాయం చేసే స్నేహితుడివి. ఈ ఫోటోలో ఏముందో, అక్కడ వాతావరణం ఎలా ఉందో, మనుషులు ఏం చేస్తున్నారో చాలా క్లుప్తంగా, మనిషిలా తెలుగులో వివరించు." },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                ]
+            }]
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            const description = result.candidates[0].content.parts[0].text;
+
+            status.innerText = description;
+            speak(description);
+
+        } catch (error) {
+            console.error("Error:", error);
+            status.innerText = "క్షమించండి, ఇంటర్నెట్ సమస్య వల్ల వివరించలేకపోతున్నాను.";
+            speak("క్షమించండి, సర్వర్‌ను సంప్రదించడంలో సమస్య ఉంది.");
+        }
+    }
+
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'te-IN';
+        window.speechSynthesis.speak(msg);
+    }
+
+    startCamera();
+</script>
+
+</body>
+</html>
