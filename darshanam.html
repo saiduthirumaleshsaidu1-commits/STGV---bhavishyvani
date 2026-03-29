@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర 2.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; }
+        .header { background: #111; padding: 15px; border-bottom: 2px solid #0ff; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: 20px auto; border: 2px solid #0ff; border-radius: 10px; overflow: hidden; }
+        video { width: 100%; display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .sos-btn { background: red; color: white; padding: 25px; border-radius: 50%; border: none; font-weight: bold; font-size: 20px; margin: 20px; cursor: pointer; box-shadow: 0 0 20px red; }
+        .controls { margin: 20px; }
+        .btn { padding: 15px 25px; background: #0ff; border: none; border-radius: 5px; font-weight: bold; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body onload="init()">
+
+    <div class="header">
+        <h1>విశ్వనేత్ర 2.0 - డిజిటల్ కన్ను</h1>
+        <p>జ్ఞానం తెలుసుకో - అజ్ఞానం వదులుకో</p>
+    </div>
+
+    <button class="sos-btn" onclick="triggerSOS()">SOS</button>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="speakStatus()">ప్రస్తుత పరిస్థితి ఏమిటి?</button>
+        <button class="btn" onclick="location.href='index.html'">వెనక్కి వెళ్ళు</button>
+    </div>
+
+    <div id="info-box" style="padding: 15px; font-size: 18px; color: #0ff;">
+        సిస్టమ్ సిద్ధమవుతోంది...
+    </div>
+
+    <script>
+        let model;
+        let video = document.getElementById('webcam');
+        let infoBox = document.getElementById('info-box');
+
+        async function init() {
+            speak("విశ్వనేత్ర సిద్ధమవుతోంది గురు. సహాయం కోసం ఎరుపు బటన్ నొక్కండి.");
+            infoBox.innerText = "మోడల్ లోడ్ అవుతోంది...";
+            model = await cocoSsd.load();
+            infoBox.innerText = "మోడల్ సిద్ధం. కెమెరా ఆన్ అవుతోంది...";
+            startCamera();
+        }
+
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                detectFrame();
+            };
+        }
+
+        async function detectFrame() {
+            const predictions = await model.detect(video);
+            renderPredictions(predictions);
+            requestAnimationFrame(detectFrame);
+        }
+
+        function renderPredictions(predictions) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            predictions.forEach(prediction => {
+                const [x, y, width, height] = prediction.bbox;
+                ctx.strokeStyle = "#0ff";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x, y, width, height);
+
+                let label = translateToTelugu(prediction.class);
+                ctx.fillStyle = "#0ff";
+                ctx.fillText(label, x, y > 10 ? y - 5 : 10);
+
+                // అడ్డంకి హెచ్చరిక (Object is close)
+                if (width > video.videoWidth * 0.6) {
+                    speakOnce("జాగ్రత్త! ముందు " + label + " ఉంది. ఆగు!");
+                }
+            });
+        }
+
+        function translateToTelugu(label) {
+            const dictionary = {
+                "person": "మనిషి", "chair": "కుర్చీ", "bottle": "సీసా", 
+                "mobile phone": "ఫోన్", "table": "బల్ల", "cup": "కప్పు"
+            };
+            return dictionary[label] || label;
+        }
+
+        let lastSpeak = 0;
+        function speakOnce(text) {
+            let now = Date.now();
+            if (now - lastSpeak > 4000) { // 4 సెకన్ల గ్యాప్
+                speak(text);
+                lastSpeak = now;
+            }
+        }
+
+        function speak(text) {
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'te-IN';
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function triggerSOS() {
+            speak("ప్రమాద హెచ్చరిక పంపబడింది. మీ లొకేషన్ ట్రాక్ చేయబడుతోంది.");
+            navigator.geolocation.getCurrentPosition(pos => {
+                console.log(pos.coords.latitude, pos.coords.longitude);
+            });
+        }
+
+        function speakStatus() {
+            speak("నేను ప్రస్తుతానికి వస్తువులను మరియు అడ్డంకులను గుర్తిస్తున్నాను.");
+        }
+    </script>
+</body>
+</html>
