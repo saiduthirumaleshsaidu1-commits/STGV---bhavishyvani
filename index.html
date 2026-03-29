@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV విశ్వనేత్ర AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #000; color: #fff; text-align: center; margin: 0; overflow-x: hidden; }
+        #video-container { position: relative; width: 100%; max-width: 400px; margin: auto; background: #222; }
+        video { width: 100%; height: auto; display: block; border: 2px solid #00ffcc; }
+        .status { background: #111; padding: 15px; color: #FFD700; font-size: 18px; min-height: 40px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
+        button { padding: 20px; font-size: 18px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-start { background: #00ffcc; color: #000; }
+        .btn-ai { background: #FFD700; color: #000; }
+        .footer { font-size: 12px; color: #666; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="status" id="status">లోడ్ అవుతోంది... పర్మిషన్ ఇవ్వండి.</div>
+
+<div id="video-container">
+    <video id="webcam" autoplay playsinline muted></video>
+</div>
+
+<div class="controls">
+    <button class="btn-start" onclick="toggleDetection()" id="startBtn">వస్తువులు వెతుకు</button>
+    <button class="btn-ai" onclick="describeScene()">మొత్తం వివరించు</button>
+</div>
+
+<div class="footer">Managed by సైదు తిరుమలేష్</div>
+
+<script>
+    const video = document.getElementById('webcam');
+    const status = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    let model, isDetecting = false, lastSpoken = "";
+
+    const teluguDictionary = { "person": "మనిషి", "chair": "కుర్చీ", "mobile phone": "ఫోన్", "bottle": "బాటిల్", "wall": "గోడ", "door": "తలుపు" };
+
+    // 1. కెమెరా ఫిక్స్ (చిన్న ఫోన్ల కోసం పక్కాగా)
+    async function startCamera() {
+        try {
+            const constraints = { video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } } };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+            status.innerText = "మోడల్ లోడ్ అవుతోంది...";
+            model = await cocoSsd.load();
+            status.innerText = "విశ్వనేత్ర సిద్ధంగా ఉంది.";
+            speak("విశ్వనేత్ర సిద్ధంగా ఉంది.");
+        } catch (err) {
+            status.innerText = "కెమెరా పని చేయడం లేదు. బ్రౌజర్ సెట్టింగ్స్ లో పర్మిషన్ ఇవ్వండి.";
+            console.error(err);
+        }
+    }
+
+    // 2. వస్తువులు & గోడల గుర్తింపు (Real-time)
+    async function detect() {
+        if (!isDetecting) return;
+        const predictions = await model.detect(video);
+        
+        let found = "";
+        predictions.forEach(p => {
+            if (p.score > 0.6) {
+                found = teluguDictionary[p.class.toLowerCase()] || p.class;
+            }
+        });
+
+        if (found && found !== lastSpoken) {
+            status.innerText = "ముందు " + found + " ఉంది.";
+            speak("ముందు " + found + " ఉంది.");
+            lastSpoken = found;
+        }
+        setTimeout(() => requestAnimationFrame(detect), 300); // ఫోన్ హ్యాంగ్ అవ్వకుండా గ్యాప్
+    }
+
+    function toggleDetection() {
+        isDetecting = !isDetecting;
+        startBtn.innerText = isDetecting ? "ఆపు (Stop)" : "వస్తువులు వెతుకు";
+        if (isDetecting) detect();
+    }
+
+    // 3. మనిషిలా వివరించే ఫీచర్ (Gemini AI)
+    async function describeScene() {
+        const API_KEY = "AIzaSyDuE9b7fE-Z1tlCp9aC45KgXWtp21NakN"; // మీ కీ ఇక్కడ ఉంది
+        status.innerText = "పరిశీలిస్తున్నాను... ఒక్క నిమిషం.";
+        speak("పరిశీలిస్తున్నాను, ఒక్క నిమిషం.");
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "ఈ ఫోటోలో ఏముందో అంధుడికి అర్థమయ్యేలా తెలుగులో మనిషిలా వివరించు." }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }] })
+            });
+            const data = await res.json();
+            const text = data.candidates[0].content.parts[0].text;
+            status.innerText = text;
+            speak(text);
+        } catch (e) {
+            speak("ఇంటర్నెట్ చెక్ చేయండి.");
+        }
+    }
+
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'te-IN';
+        window.speechSynthesis.speak(msg);
+    }
+
+    window.onload = startCamera;
+</script>
+</body>
+</html>
