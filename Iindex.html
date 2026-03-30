@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర అల్ట్రా</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { background: #000; color: #0ff; font-family: sans-serif; text-align: center; margin: 0; overflow-x: hidden; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: 20px auto; border: 4px solid #0ff; border-radius: 20px; box-shadow: 0 0 50px #0ff; }
+        video { width: 100%; display: block; border-radius: 15px; }
+        .display-panel { background: #111; padding: 20px; margin: 10px; border-radius: 15px; border: 1px solid #333; }
+        #ai-speech { font-size: 24px; font-weight: bold; color: #fff; }
+    </style>
+</head>
+<body onload="init()">
+
+    <h1>విశ్వనేత్ర అల్ట్రా 🚀</h1>
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+    </div>
+
+    <div class="display-panel">
+        <p style="color: #888;">AI వివరణ:</p>
+        <div id="ai-speech">సిస్టమ్ లోడ్ అవుతోంది...</div>
+    </div>
+
+    <script>
+        let model;
+        let video = document.getElementById('webcam');
+        let speechDiv = document.getElementById('ai-speech');
+        let isSpeaking = false;
+
+        async function init() {
+            speechDiv.innerText = "కెమెరా మరియు మెదడు సిద్ధమవుతున్నాయి...";
+            model = await cocoSsd.load();
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => { detectFrame(); };
+            speak("విశ్వనేత్ర అల్ట్రా సిద్ధం గురు. ఇప్పుడు నేను ప్రతిదీ వివరంగా వివరిస్తాను.");
+        }
+
+        async function detectFrame() {
+            const predictions = await model.detect(video);
+            
+            if (predictions.length > 0 && !isSpeaking) {
+                let p = predictions[0]; // అత్యంత ముఖ్యమైన వస్తువు
+                let label = translate(p.class);
+                let [x, y, width, height] = p.bbox;
+                
+                // దిశను కనుగొనడం
+                let direction = "";
+                let midX = x + (width / 2);
+                if (midX < video.videoWidth / 3) direction = "ఎడమ వైపున";
+                else if (midX > (video.videoWidth / 3) * 2) direction = "కుడి వైపున";
+                else direction = "సరిగ్గా ఎదురుగా";
+
+                // దూరాన్ని అంచనా వేయడం
+                let distance = width > 200 ? "చాలా దగ్గరగా" : "కొంచెం దూరంలో";
+
+                let fullDesc = `నీకు ${direction} ${distance} ఒక ${label} ఉంది.`;
+                
+                // వివరణాత్మక మార్గదర్శకం
+                if(label === "మనిషి") fullDesc += " అతను నీ వైపు చూస్తున్నాడు.";
+                if(label === "కుక్క" || label === "పిల్లి") fullDesc += " జాగ్రత్త, అది కదలవచ్చు.";
+
+                announce(fullDesc);
+            }
+            requestAnimationFrame(detectFrame);
+        }
+
+        function translate(label) {
+            const dict = {
+                "person": "మనిషి", "dog": "కుక్క", "cat": "పిల్లి", "car": "కారు",
+                "motorcycle": "బైక్", "chair": "కుర్చీ", "bottle": "సీసా", "cell phone": "ఫోన్"
+            };
+            return dict[label] || label;
+        }
+
+        function announce(text) {
+            isSpeaking = true;
+            speechDiv.innerText = text;
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            msg.rate = 1.1;
+            msg.onend = () => { 
+                // 3 సెకన్ల విరామం తర్వాతే మళ్ళీ మాట్లాడుతుంది (గందరగోళం లేకుండా)
+                setTimeout(() => { isSpeaking = false; }, 3000); 
+            };
+            window.speechSynthesis.speak(msg);
+        }
+
+        function speak(text) {
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+</html>
