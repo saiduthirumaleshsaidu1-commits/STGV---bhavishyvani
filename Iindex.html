@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర ప్రో</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { background: #050505; color: #00f2ff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 20px; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: 20px auto; border: 5px solid #00f2ff; border-radius: 25px; overflow: hidden; box-shadow: 0 0 40px #00f2ff; }
+        video { width: 100%; display: block; filter: brightness(1.1); }
+        .ai-box { background: rgba(20, 20, 20, 0.9); padding: 20px; border-radius: 20px; margin-top: 15px; border: 1px solid #00f2ff; }
+        .mic-btn { background: #00f2ff; color: #000; padding: 25px; border-radius: 50%; border: none; font-size: 35px; cursor: pointer; box-shadow: 0 0 25px #00f2ff; margin-top: 10px; }
+        .status-dot { height: 10px; width: 10px; background-color: #00f2ff; border-radius: 50%; display: inline-block; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body onload="startVishwaNetra()">
+
+    <h1>విశ్వనేత్ర ప్రో <span class="status-dot"></span></h1>
+    
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+    </div>
+
+    <div class="ai-box">
+        <p id="thought" style="color: #888;">సిస్టమ్ సిద్ధమవుతోంది...</p>
+        <h2 id="speech">"నన్ను అడగండి గురు..."</h2>
+    </div>
+
+    <button class="mic-btn" onclick="askAI()">🎤</button>
+
+    <script>
+        let model;
+        let lastSeen = "ఏమీ లేదు";
+        const video = document.getElementById('webcam');
+
+        function speak(text) {
+            window.speechSynthesis.cancel(); // పాత మాటలు ఆపేయడానికి
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'te-IN';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+            document.getElementById('speech').innerText = `"${text}"`;
+        }
+
+        async function startVishwaNetra() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                document.getElementById('thought').innerText = "మోడల్ లోడ్ అవుతోంది...";
+                model = await cocoSsd.load();
+                document.getElementById('thought').innerText = "విశ్వనేత్ర సిద్ధం!";
+                speak("నేను సిద్ధం గురు. మీరు నన్ను ప్రశ్నలు అడగవచ్చు.");
+                runDetection();
+            } catch (e) {
+                alert("కెమెరా పర్మిషన్ ఇవ్వండి బాస్!");
+            }
+        }
+
+        // నిరంతరంగా చూస్తూ ఉండటం (Background Vision)
+        async function runDetection() {
+            if (model) {
+                const predictions = await model.detect(video);
+                if (predictions.length > 0) {
+                    lastSeen = translate(predictions[0].class);
+                    document.getElementById('thought').innerText = "నేను చూస్తున్నది: " + lastSeen;
+                }
+            }
+            setTimeout(runDetection, 500); // ప్రతి అర సెకనుకు స్కాన్ చేస్తుంది
+        }
+
+        function askAI() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'te-IN';
+            recognition.start();
+
+            document.getElementById('thought').innerText = "వింటున్నాను...";
+
+            recognition.onresult = (event) => {
+                const query = event.results[0][0].transcript;
+                processQuery(query);
+            };
+        }
+
+        function processQuery(query) {
+            if (query.includes("ఏముంది") || query.includes("చూడు") || query.includes("ఎవరు")) {
+                speak(`నీ ముందు ఒక ${lastSeen} ఉంది గురు.`);
+            } else if (query.includes("దారి") || query.includes("నడవచ్చా")) {
+                if (lastSeen === "ఏమీ లేదు") {
+                    speak("దారి ఖాళీగా ఉంది, మీరు ముందుకు వెళ్ళవచ్చు.");
+                } else {
+                    speak(`జాగ్రత్త గురు, ముందు ${lastSeen} ఉంది. ఆగి వెళ్ళండి.`);
+                }
+            } else {
+                speak("క్షమించు గురు, మీరు అడిగింది నాకు అర్థం కాలేదు. ఇంకోసారి చెబుతారా?");
+            }
+        }
+
+        function translate(label) {
+            const dict = {
+                "person": "మనిషి", "bicycle": "సైకిల్", "car": "కారు", "motorcycle": "బైక్",
+                "dog": "కుక్క", "cat": "పిల్లి", "bottle": "సీసా", "chair": "కుర్చీ",
+                "potted plant": "మొక్క", "dining table": "బల్ల", "mobile phone": "ఫోన్",
+                "laptop": "ల్యాప్‌టాప్", "backpack": "బ్యాగు", "umbrella": "గొడుగు"
+            };
+            return dict[label] || label;
+        }
+    </script>
+</body>
+</html>
