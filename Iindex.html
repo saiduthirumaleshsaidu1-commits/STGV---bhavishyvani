@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర అల్టిమేట్ AI</title>
+    <style>
+        body { background: #000; color: #00e5ff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 15px; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: auto; border: 4px solid #00e5ff; border-radius: 20px; box-shadow: 0 0 40px #00e5ff; overflow: hidden; }
+        video { width: 100%; display: block; }
+        canvas { display: none; } /* ఫోటో తీయడానికి వాడతాం */
+        .ai-panel { background: #111; padding: 20px; border-radius: 15px; margin-top: 15px; border-left: 8px solid #00e5ff; text-align: left; }
+        .controls { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+        .btn { padding: 20px; border-radius: 50%; border: none; font-size: 28px; cursor: pointer; box-shadow: 0 0 15px #00e5ff; transition: 0.3s; }
+        .btn:active { transform: scale(0.9); }
+        .mic-btn { background: #00e5ff; color: #000; }
+        .view-btn { background: #fff; color: #000; }
+        #status-text { font-size: 14px; color: #666; margin-bottom: 10px; }
+    </style>
+</head>
+<body onload="init()">
+
+    <div id="status-text">S-T-G-V భవిష్యవాణి - AI సిస్టమ్</div>
+    <h1>విశ్వనేత్ర అల్టిమేట్ 🧠</h1>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="snapshot"></canvas>
+    </div>
+
+    <div class="ai-panel">
+        <div id="ai-response">నమస్కారం గురు! నేను సిద్ధం. కింద ఉన్న కన్ను బటన్ నొక్కితే చుట్టూ ఏముందో వివరిస్తాను. మైక్ నొక్కితే మీతో మాట్లాడతాను.</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn view-btn" onclick="captureAndDescribe()">👁️</button>
+        <button class="btn mic-btn" onclick="startVoiceChat()">🎤</button>
+    </div>
+
+    <script>
+        // 🚨 మీ API కీని ఇక్కడ మార్చండి
+        const API_KEY = "AIzaSyDuE9b7fE-Z1tlCp9aC45KgXWtp21NakNM"; 
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('snapshot');
+        const responseDiv = document.getElementById('ai-response');
+
+        async function init() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                speak("విశ్వనేత్ర మెదడు సిద్ధమైంది గురు. నన్ను ఏమైనా అడగండి.");
+            } catch (err) {
+                alert("కెమెరా పర్మిషన్ ఇవ్వండి బాస్!");
+            }
+        }
+
+        // 1. దృశ్యాన్ని వివరించడం (Vision AI)
+        async function captureAndDescribe(userQuestion = "ఈ చిత్రంలో ఏముందో తెలుగులో వివరంగా వివరించు. అంధులకు అర్థమయ్యేలా దారిని కూడా సూచించు.") {
+            responseDiv.innerText = "ఆలోచిస్తున్నాను గురు...";
+            
+            // ఫోటో తీయడం
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+            // Gemini API కి పంపడం
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: userQuestion },
+                        { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                    ]
+                }]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                const aiText = data.candidates[0].content.parts[0].text;
+                
+                responseDiv.innerText = aiText;
+                speak(aiText);
+            } catch (error) {
+                responseDiv.innerText = "క్షమించు గురు, ఇంటర్నెట్ లేదా API కీ సమస్య ఉన్నట్లుంది.";
+            }
+        }
+
+        // 2. మీ మాటలను విని సమాధానం ఇవ్వడం (Voice Interaction)
+        function startVoiceChat() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'te-IN';
+            recognition.start();
+
+            responseDiv.innerText = "మీ మాటలు వింటున్నాను...";
+
+            recognition.onresult = (event) => {
+                const userQuery = event.results[0][0].transcript;
+                responseDiv.innerText = "మీరు అడిగింది: " + userQuery;
+                // ప్రశ్నతో పాటు ఫోటోను కూడా పంపిస్తాం
+                captureAndDescribe(userQuery + " - దీని గురించి ఈ చిత్రాన్ని చూసి తెలుగులో సమాధానం ఇవ్వు.");
+            };
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            msg.rate = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+</html>
