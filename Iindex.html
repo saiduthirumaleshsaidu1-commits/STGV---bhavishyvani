@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర సురక్షిత AI</title>
+    <style>
+        body { background: #000; color: #0ff; font-family: sans-serif; text-align: center; padding: 20px; }
+        #video-container { width: 100%; max-width: 500px; margin: auto; border: 3px solid #0ff; border-radius: 20px; }
+        video { width: 100%; display: block; border-radius: 15px; }
+        .ai-panel { background: #111; padding: 20px; margin-top: 20px; border-radius: 15px; border: 1px solid #0ff; }
+        button { padding: 15px 30px; margin-top: 10px; cursor: pointer; border-radius: 25px; border: none; background: #0ff; font-weight: bold; }
+    </style>
+</head>
+<body onload="checkKey()">
+
+    <h1>విశ్వనేత్ర సురక్షిత AI 🛡️</h1>
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+    </div>
+    <div class="ai-panel">
+        <p id="response">సిస్టమ్ సిద్ధం. కీ సెట్ చేయబడింది.</p>
+    </div>
+    <button onclick="resetKey()">కీ మార్చు</button>
+
+    <script>
+        let API_KEY = localStorage.getItem("vishwa_key");
+
+        // కీ లేకపోతే అడగడం
+        function checkKey() {
+            if (!API_KEY) {
+                API_KEY = prompt("గురు, మీ Gemini API Key ఇక్కడ పేస్ట్ చేయండి (ఇది మీ ఫోన్ లోనే సేవ్ అవుతుంది):");
+                if (API_KEY) {
+                    localStorage.setItem("vishwa_key", API_KEY);
+                    location.reload();
+                } else {
+                    alert("కీ లేకుండా AI పనిచేయదు బాస్!");
+                }
+            } else {
+                startCamera();
+            }
+        }
+
+        function resetKey() {
+            localStorage.removeItem("vishwa_key");
+            location.reload();
+        }
+
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('webcam').srcObject = stream;
+        }
+
+        // ఇక్కడ పైన ఉన్న లాజిక్ ప్రకారం మీ API Call ఫంక్షన్ రాయాలి
+        // (API_KEY వేరియబుల్ ని పైన ఇచ్చినట్లు వాడండి)
+    </script>
+</body>
+</html>
