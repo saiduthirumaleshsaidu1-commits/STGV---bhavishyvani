@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV విశ్వనేత్ర AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #000; color: #fff; text-align: center; margin: 0; }
+        video { width: 100%; max-width: 400px; border: 2px solid #00ffcc; margin-top: 10px; }
+        .status { background: #111; padding: 15px; color: #FFD700; font-size: 18px; min-height: 40px; }
+        button { padding: 20px; font-size: 18px; margin: 10px; width: 80%; border-radius: 10px; border: none; font-weight: bold; background: #FFD700; }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">లోడ్ అవుతోంది...</div>
+    <video id="webcam" autoplay playsinline muted></video>
+    <button onclick="describeScene()">మొత్తం వివరించు</button>
+
+<script>
+    const video = document.getElementById('webcam');
+    const status = document.getElementById('status');
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            status.innerText = "విశ్వనేత్ర సిద్ధంగా ఉంది.";
+            speak("విశ్వనేత్ర సిద్ధంగా ఉంది.");
+        } catch (err) { status.innerText = "కెమెరా అనుమతి లేదు."; }
+    }
+
+    async function describeScene() {
+        // మీ కీని ఇక్కడ పేస్ట్ చేయండి
+        let rawKey = "AIzaSyDuE9b7fE-Z1tlCp9aC45KgXWtp21NakN"; 
+        const API_KEY = rawKey.replace(/[^a-zA-Z0-9_-]/g, '').trim();
+
+        status.innerText = "పరిశీలిస్తున్నాను...";
+        speak("పరిశీలిస్తున్నాను.");
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        try {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: "ఈ ఫోటోలో ఏముందో తెలుగులో మనిషిలా వివరించు." }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }] })
+            });
+            const data = await res.json();
+            if(data.error) throw new Error("API Key Error");
+            const text = data.candidates[0].content.parts[0].text;
+            status.innerText = text;
+            speak(text);
+        } catch (e) {
+            status.innerText = "కీ లేదా నెట్‌వర్క్ సమస్య.";
+            speak("దయచేసి ఇంటర్నెట్ మరియు కీ చెక్ చేయండి.");
+        }
+    }
+
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'te-IN';
+        window.speechSynthesis.speak(msg);
+    }
+    window.onload = startCamera;
+</script>
+</body>
+</html>
