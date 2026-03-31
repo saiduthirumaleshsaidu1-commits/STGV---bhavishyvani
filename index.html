@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర AI 🧠</title>
+    <style>
+        body { background: #000; color: #00e5ff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: auto; border: 4px solid #00e5ff; border-radius: 20px; overflow: hidden; box-shadow: 0 0 25px #00e5ff; }
+        video { width: 100%; display: block; }
+        canvas { display: none; }
+        .ai-panel { background: #111; padding: 20px; border-radius: 15px; margin-top: 15px; border-left: 6px solid #00e5ff; text-align: left; min-height: 80px; font-size: 18px; color: #fff; }
+        .controls { display: flex; justify-content: center; gap: 30px; margin-top: 20px; padding-bottom: 20px; }
+        .btn { padding: 20px; border-radius: 50%; border: none; font-size: 30px; cursor: pointer; box-shadow: 0 0 15px #00e5ff; transition: 0.3s; }
+        .mic-btn { background: #00e5ff; color: #000; }
+        .view-btn { background: #fff; color: #000; }
+        .reset-link { color: #555; font-size: 12px; margin-top: 20px; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body onload="initApp()">
+
+    <h1>విశ్వనేత్ర AI 🧠</h1>
+    
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="snapshot"></canvas>
+    </div>
+
+    <div class="ai-panel">
+        <div id="ai-response">లోడ్ అవుతోంది గురు...</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn view-btn" onclick="analyzeFrame('ముందు ఏముందో తెలుగులో వివరించు')">👁️</button>
+        <button class="btn mic-btn" onclick="startListening()">🎤</button>
+    </div>
+
+    <div class="reset-link" onclick="resetKey()">కీ మార్చడానికి ఇక్కడ నొక్కండి</div>
+
+    <script>
+        let video, canvas, responseDiv;
+        let API_KEY = localStorage.getItem("vishwa_key");
+
+        async function initApp() {
+            video = document.getElementById('webcam');
+            canvas = document.getElementById('snapshot');
+            responseDiv = document.getElementById('ai-response');
+
+            if (!API_KEY) {
+                const userKey = prompt("గురు, మీ Gemini API Key ని ఇక్కడ పేస్ట్ చేయండి:");
+                if (userKey) {
+                    API_KEY = userKey.trim();
+                    localStorage.setItem("vishwa_key", API_KEY);
+                }
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                responseDiv.innerText = "విశ్వనేత్ర సిద్ధం గురు!";
+                speak("విశ్వనేత్ర సిద్ధం గురు.");
+            } catch (err) {
+                responseDiv.innerText = "కెమెరా పర్మిషన్ ఇవ్వండి బాస్!";
+            }
+        }
+
+        function resetKey() {
+            localStorage.removeItem("vishwa_key");
+            location.reload();
+        }
+
+        async function analyzeFrame(promptText) {
+            if (!API_KEY) { alert("కీ లేదు గురు!"); return; }
+            responseDiv.innerText = "చూస్తున్నాను గురు...";
+            
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            const payload = { contents: [{ parts: [{ text: promptText }, { inline_data: { mime_type: "image/jpeg", data: base64Image } }] }] };
+
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await response.json();
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                responseDiv.innerText = aiResponse;
+                speak(aiResponse);
+            } catch (error) {
+                responseDiv.innerText = "కీ లేదా ఇంటర్నెట్ సమస్య ఉంది గురు.";
+            }
+        }
+
+        function startListening() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'te-IN';
+            recognition.start();
+            recognition.onresult = (event) => {
+                const query = event.results[0][0].transcript;
+                analyzeFrame(query + " - దీనికి సమాధానం తెలుగులో ఇవ్వు.");
+            };
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+</html>
