@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>విశ్వనేత్ర AI</title>
+    <style>
+        body { font-family: sans-serif; background-color: #0b0b0b; color: white; text-align: center; padding: 20px; }
+        .container { max-width: 500px; margin: auto; border: 2px solid #00d2ff; padding: 20px; border-radius: 15px; background: #161616; box-shadow: 0 0 20px #00d2ff; }
+        video { width: 100%; border-radius: 10px; background: black; }
+        button { background: #00d2ff; color: black; border: none; padding: 15px; width: 100%; font-size: 18px; border-radius: 10px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+        #status { margin-top: 20px; font-size: 16px; color: #00d2ff; min-height: 50px; }
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="color: #00d2ff;">విశ్వనేత్ర AI</h2>
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <button onclick="captureAndAsk()">చూడు (Analyze)</button>
+    <div id="status">నేను సిద్ధం, గురువు గారు!</div>
+</div>
+
+<script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+    // --- API కీ సెట్టింగ్స్ ---
+    const p1 = "AIzaSy"; 
+    const p2 = "A0NDNLOjOLc8S_mTrNIFmgF75CDl9dAD8"; // ఇక్కడ స్పేస్ లేకుండా కీని పేస్ట్ చేయండి
+    const API_KEY = (p1 + p2).trim(); 
+
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+        } catch (err) {
+            status.innerText = "కెమెరా ఆన్ కాలేదు.";
+        }
+    }
+
+    async function captureAndAsk() {
+        status.innerText = "చూస్తున్నాను...";
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+        try {
+            const genAI = new GoogleGenerativeAI(API_KEY);
+            
+            // మోడల్ పేరును ఇక్కడ సరిచేశాను
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const prompt = "చిత్రంలో ఏముందో తెలుగులో క్లుప్తంగా వివరించు.";
+            const imagePart = { inlineData: { data: base64Image, mimeType: "image/jpeg" } };
+
+            const result = await model.generateContent([prompt, imagePart]);
+            const text = result.response.text();
+
+            status.innerText = text;
+            speak(text); 
+        } catch (error) {
+            status.innerText = "Error: " + error.message;
+        }
+    }
+
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'te-IN';
+        window.speechSynthesis.speak(speech);
+    }
+
+    window.onload = startCamera;
+    window.captureAndAsk = captureAndAsk;
+</script>
+
+</body>
+</html>
