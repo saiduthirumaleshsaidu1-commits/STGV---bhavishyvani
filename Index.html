@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-T-G-V | విశ్వనేత్ర ట్రైనర్</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 10px; }
+        #video-container { position: relative; width: 100%; max-width: 500px; margin: auto; border: 5px solid #ffcc00; border-radius: 20px; box-shadow: 0 0 40px #ffcc00; }
+        video { width: 100%; display: block; border-radius: 15px; }
+        .training-panel { background: #1a1a1a; padding: 25px; margin: 20px; border-radius: 15px; border-left: 10px solid #ffcc00; }
+        #coach-voice { font-size: 26px; font-weight: bold; color: #ffcc00; }
+        .status-bar { color: #888; font-size: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body onload="initTrainer()">
+
+    <div class="status-bar">S-T-G-V భవిష్యవాణి - అంధుల శిక్షణ కేంద్రం</div>
+    <h1>విశ్వనేత్ర ట్రైనర్ 🎓</h1>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+    </div>
+
+    <div class="training-panel">
+        <div id="coach-voice">శిక్షణ మొదలవుతోంది...</div>
+    </div>
+
+    <script>
+        let model;
+        let video = document.getElementById('webcam');
+        let coachVoice = document.getElementById('coach-voice');
+        let isSpeaking = false;
+
+        async function initTrainer() {
+            coachVoice.innerText = "గురు, మీ శిక్షకుడు సిద్ధమవుతున్నాడు...";
+            model = await cocoSsd.load();
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => { startTraining(); };
+            speak("నమస్కారం గురు. నేను మీ విశ్వనేత్ర శిక్షకుడిని. మనం కలిసి నడక ప్రారంభిద్దాం. మీ ఫోన్ స్ట్రెయిట్ గా పట్టుకోండి.");
+        }
+
+        async function startTraining() {
+            const predictions = await model.detect(video);
+            
+            if (!isSpeaking) {
+                if (predictions.length > 0) {
+                    processTraining(predictions[0]);
+                } else {
+                    // ఏ అడ్డంకులు లేకపోతే ధైర్యం చెప్పడం
+                    announce("ముందు దారి ఖాళీగా ఉంది. నెమ్మదిగా అడుగు వేయండి.");
+                }
+            }
+            requestAnimationFrame(startTraining);
+        }
+
+        function processTraining(p) {
+            let label = translate(p.class);
+            let [x, y, width, height] = p.bbox;
+            let midX = x + (width / 2);
+            let area = width * height; // వస్తువు పరిమాణం (దూరాన్ని బట్టి మారుతుంది)
+
+            let instruction = "";
+
+            // 1. దిశానిర్దేశం
+            if (midX < video.videoWidth * 0.3) {
+                instruction = `మీ ఎడమ వైపున ఒక ${label} ఉంది. కొంచెం కుడికి తిరిగి నడవండి.`;
+            } else if (midX > video.videoWidth * 0.7) {
+                instruction = `మీ కుడి వైపున ఒక ${label} ఉంది. కొంచెం ఎడమకు జరిగి నడవండి.`;
+            } else {
+                // 2. ఎదురుగా అడ్డంకి ఉంటే
+                if (width > 200) {
+                    instruction = `ఆగండి! సరిగ్గా మీ ఎదురుగా ${label} చాలా దగ్గరగా ఉంది. దారి మళ్లించండి.`;
+                } else {
+                    instruction = `నేరుగా ఒక ${label} కనిపిస్తోంది. గమనిస్తూ ముందుకు సాగండి.`;
+                }
+            }
+
+            announce(instruction);
+        }
+
+        function translate(label) {
+            const dict = {
+                "person": "మనిషి", "dog": "కుక్క", "chair": "కుర్చీ", "bottle": "సీసా",
+                "motorcycle": "బైక్", "bicycle": "సైకిల్", "bench": "బల్ల", "potted plant": "మొక్క"
+            };
+            return dict[label] || label;
+        }
+
+        function announce(text) {
+            isSpeaking = true;
+            coachVoice.innerText = text;
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            msg.rate = 1.0;
+            msg.onend = () => { 
+                // శిక్షణలో క్లారిటీ కోసం 4 సెకన్ల గ్యాప్
+                setTimeout(() => { isSpeaking = false; }, 4000); 
+            };
+            window.speechSynthesis.speak(msg);
+        }
+
+        function speak(text) {
+            let msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'te-IN';
+            window.speechSynthesis.speak(msg);
+        }
+    </script>
+</body>
+</html>
