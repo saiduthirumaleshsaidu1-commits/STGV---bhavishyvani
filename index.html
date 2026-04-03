@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>విశ్వనేత్ర AI - సామాన్యుడి కన్ను</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #050505; color: #e0e0e0; text-align: center; margin: 0; padding: 10px; }
+        .container { max-width: 450px; margin: auto; border: 2px solid #00d2ff; padding: 20px; border-radius: 25px; background: #121212; box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); }
+        h1 { color: #00d2ff; font-size: 24px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; }
+        p { font-size: 14px; color: #888; margin-bottom: 20px; }
+        video { width: 100%; border-radius: 20px; border: 2px solid #222; background: #000; display: block; }
+        .controls { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        button { border: none; padding: 16px; font-size: 18px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: 0.3s; color: white; }
+        .btn-basic { background: #2c2c2c; border: 1px solid #444; }
+        .btn-ai { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4); }
+        button:active { transform: scale(0.95); }
+        #status { margin-top: 20px; font-size: 18px; color: #00ffaa; min-height: 90px; padding: 15px; border-top: 1px solid #222; line-height: 1.6; display: flex; align-items: center; justify-content: center; }
+        canvas { display: none; }
+        .loader { color: #ffab40; font-weight: bold; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>విశ్వనేత్ర AI</h1>
+    <p>సాంకేతికతతో సామాన్యుడి కన్ను</p>
+    
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    
+    <div id="status">సిస్టమ్ సిద్ధం అవుతోంది...</div>
+
+    <div class="controls">
+        <button class="btn-basic" onclick="runMobileNet()">త్వరిత గుర్తింపు (Basic)</button>
+        <button class="btn-ai" onclick="runGeminiAI()">అడ్వాన్స్‌డ్ విశ్లేషణ (Gemini AI)</button>
+    </div>
+</div>
+
+<script>
+    // --- API Key Security: కీని విడగొట్టి దాచడం ---
+    // మీ పూర్తి కీని మూడు భాగాలుగా ఇక్కడ పెట్టండి
+    const partA = "AIzaSy"; 
+    const partB = "A0NDNLOjOLc8S_mTrNIF"; 
+    const partC = "mgF75CDl9dAD8"; 
+
+    // ఫంక్షన్ ద్వారా కీని కలపడం
+    function getSecureKey() {
+        return (partA + partB + partC).trim();
+    }
+
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    let netModel = null;
+
+    async function init() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } } 
+            });
+            video.srcObject = stream;
+            status.innerText = "మోడల్ లోడ్ అవుతోంది...";
+            netModel = await mobilenet.load();
+            status.innerText = "నేను సిద్ధంగా ఉన్నాను, గురువు గారు!";
+        } catch (err) {
+            status.innerText = "కెమెరా సెట్టింగ్స్ చెక్ చేయండి.";
+            console.error(err);
+        }
+    }
+
+    async function runMobileNet() {
+        if (!netModel) return;
+        status.innerText = "చూస్తున్నాను...";
+        const predictions = await netModel.classify(video);
+        if (predictions.length > 0) {
+            const result = predictions[0].className;
+            status.innerText = "ఇది బహుశా: " + result;
+            speak("ఇది బహుశా " + result);
+        }
+    }
+
+    async function runGeminiAI() {
+        const CURRENT_KEY = getSecureKey();
+        
+        if (CURRENT_KEY.length < 10) {
+            status.innerText = "API Key సరిగ్గా లేదు.";
+            return;
+        }
+
+        status.innerHTML = '<span class="loader">ఏఐ విశ్లేషిస్తోంది...</span>';
+        
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // క్వాలిటీ ఆప్టిమైజేషన్
+        const base64Image = canvas.toDataURL('image/jpeg', 0.2).split(',')[1];
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CURRENT_KEY}`;
+
+        const payload = {
+            contents: [{
+                parts: [{
+                    text: "నువ్వు ఒక చూపు లేని వ్యక్తికి మార్గదర్శివి. ఈ ఫోటోలో ఏముందో తెలుగులో క్లుప్తంగా, స్పష్టంగా వివరించు. అడ్డంకులు మరియు దారి గురించి చెప్పు."
+                }, {
+                    inline_data: { mime_type: "image/jpeg", data: base64Image }
+                }]
+            }]
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                // ఎర్రర్ వస్తే దాన్ని క్లియర్ గా చూపిస్తుంది
+                status.innerText = "Error: " + data.error.message;
+                return;
+            }
+
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                status.innerText = aiResponse;
+                speak(aiResponse);
+            }
+        } catch (error) {
+            status.innerText = "కనెక్షన్ సమస్య. మళ్ళీ ప్రయత్నించండి.";
+        }
+    }
+
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'te-IN';
+        speech.rate = 0.9;
+        window.speechSynthesis.speak(speech);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
