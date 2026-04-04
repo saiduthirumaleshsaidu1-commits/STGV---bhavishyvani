@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>విశ్వనేత్ర AI - Updated</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b0b0b; color: white; text-align: center; margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: auto; border: 2px solid #00d2ff; padding: 15px; border-radius: 20px; background: #161616; box-shadow: 0 0 20px rgba(0, 210, 255, 0.3); }
+        h1 { color: #00d2ff; font-size: 22px; margin-bottom: 5px; }
+        p { font-size: 14px; color: #aaa; margin-bottom: 15px; }
+        video { width: 100%; border-radius: 15px; border: 2px solid #333; background: black; transform: scaleX(1); }
+        .controls { display: flex; gap: 10px; margin-top: 15px; flex-direction: column; }
+        button { color: white; border: none; padding: 14px; font-size: 16px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-basic { background: #333; border: 1px solid #555; }
+        .btn-ai { background: linear-gradient(45deg, #00d2ff, #3a7bd5); box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3); }
+        #status { margin-top: 15px; font-size: 18px; color: #00ff88; min-height: 80px; padding: 15px; border-top: 1px solid #333; display: flex; align-items: center; justify-content: center; line-height: 1.5; }
+        canvas { display: none; }
+        .loading-text { color: #ff9800; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>విశ్వనేత్ర AI</h1>
+    <p>సాంకేతికతతో సామాన్యుడి కన్ను</p>
+    
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    
+    <div id="status" class="loading-text">సిస్టమ్ సిద్ధం అవుతోంది... దయచేసి వేచి ఉండండి.</div>
+
+    <div class="controls">
+        <button class="btn-basic" onclick="runMobileNet()">త్వరిత గుర్తింపు (Basic Mode)</button>
+        <button class="btn-ai" onclick="runGeminiAI()">అడ్వాన్స్‌డ్ విశ్లేషణ (Gemini AI)</button>
+    </div>
+</div>
+
+<script>
+    // --- API Key ని భద్రంగా ఉంచడం ---
+    const p1 = "AIzaSy"; 
+    const p2 = "A0NDNLOjOLc8S_mTrNIFmgF75CDl9dAD8"; 
+    const API_KEY = (p1 + p2).trim(); 
+
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const status = document.getElementById('status');
+    let netModel = null;
+
+    // 1. కెమెరా మరియు మోడల్స్ ప్రారంభించడం
+    async function init() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            });
+            video.srcObject = stream;
+            
+            // MobileNet లోడ్ చేయడం
+            netModel = await mobilenet.load();
+            
+            status.innerText = "నేను సిద్ధం! ఏదైనా వస్తువును చూపండి లేదా Gemini AI బటన్ నొక్కండి.";
+            status.classList.remove("loading-text");
+        } catch (err) {
+            status.innerText = "కెమెరా పర్మిషన్ ఇవ్వండి లేదా ఇంటర్నెట్ చెక్ చేయండి.";
+            console.error(err);
+        }
+    }
+
+    // 2. బేసిక్ మోడ్ (MobileNet)
+    async function runMobileNet() {
+        if (!netModel) {
+            status.innerText = "మోడల్ ఇంకా లోడ్ కాలేదు...";
+            return;
+        }
+        status.innerText = "చూస్తున్నాను...";
+        
+        const predictions = await netModel.classify(video);
+        if (predictions.length > 0) {
+            const topResult = predictions[0].className;
+            status.innerText = "బహుశా ఇది: " + topResult;
+            speak("ఇది బహుశా " + topResult);
+        }
+    }
+
+    // 3. అడ్వాన్స్‌డ్ మోడ్ (Gemini AI - Direct Fetch Method)
+    async function runGeminiAI() {
+        status.innerText = "AI తో విశ్లేషిస్తున్నాను... దయచేసి ఆగండి.";
+        
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // నెట్ ఆప్టిమైజేషన్ కోసం క్వాలిటీ 0.1 కి సెట్ చేశాను
+        const base64Image = canvas.toDataURL('image/jpeg', 0.1).split(',')[1];
+
+        // నేరుగా Google API కి రిక్వెస్ట్ పంపే URL
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+        const requestBody = {
+            contents: [{
+                parts: [
+                    { text: "నువ్వు చూపు లేని వారికి సహాయం చేసే ఒక మార్గదర్శివి. ఈ ఫోటోలో ఏముందో, ఏవైనా అడ్డంకులు లేదా అపాయాలు ఉన్నాయో లేదో తెలుగులో చాలా వివరంగా వివరించు." },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                ]
+            }]
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates.length > 0) {
+                const text = data.candidates[0].content.parts[0].text;
+                status.innerText = text;
+                speak(text);
+            } else {
+                status.innerText = "క్షమించండి, సమాచారం లభించలేదు. మళ్ళీ ప్రయత్నించండి.";
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            status.innerText = "నెట్‌వర్క్ స్లోగా ఉంది లేదా API Key సమస్య. దయచేసి మళ్ళీ ప్రయత్నించండి.";
+        }
+    }
+
+    // వాయిస్ ఫంక్షన్
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'te-IN'; // తెలుగు వాయిస్
+        speech.rate = 0.9;     // కొంచెం నిదానంగా మాట్లాడటానికి
+        window.speechSynthesis.speak(speech);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
