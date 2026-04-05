@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV: భవిష్యవాణి - కాస్మిక్ గైడ్</title>
+    <style>
+        :root {
+            --space-bg: #00050a;
+            --neon-blue: #00d2ff;
+            --sun-glow: #ff4500;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--space-bg);
+            color: white;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow-x: hidden;
+            text-align: center;
+            background-image: radial-gradient(white, rgba(255,255,255,.2) 1px, transparent 1px);
+            background-size: 100px 100px;
+        }
+
+        .header {
+            padding: 30px;
+            animation: fadeIn 3s ease-in;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--neon-blue);
+            text-shadow: 0 0 20px var(--neon-blue);
+            margin-bottom: 5px;
+        }
+
+        .sub-text {
+            font-style: italic;
+            color: #aaa;
+        }
+
+        /* విశ్వ వ్యవస్థ విజువలైజేషన్ */
+        .universe-container {
+            position: relative;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .sun {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #ffcc00, #ff4500);
+            border-radius: 50%;
+            box-shadow: 0 0 60px #ff4500;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        .orbit-earth {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: rotate 30s linear infinite;
+        }
+
+        .earth {
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle, #2b65ec, #000080);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: -17px;
+            box-shadow: 0 0 15px #2b65ec;
+            cursor: pointer;
+        }
+
+        .orbit-moon {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            top: -22px;
+            left: -22px;
+            animation: rotate 5s linear infinite;
+        }
+
+        .moon {
+            width: 12px;
+            height: 12px;
+            background: #ddd;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: -6px;
+            box-shadow: 0 0 5px white;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .insight-box {
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px solid var(--neon-blue);
+            padding: 20px;
+            margin: 20px auto;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+            min-height: 100px;
+        }
+
+        .voice-btn {
+            background: var(--neon-blue);
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-blue);
+            margin-top: 20px;
+        }
+
+        .footer-logo {
+            margin-top: 50px;
+            opacity: 0.7;
+            font-size: 0.8em;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body onclick="initAudio()">
+
+    <div class="header">
+        <h1>ఎస్ టి జి వి: భవిష్యవాణి</h1>
+        <p class="sub-text">యథా బ్రహ్మాండే తథా పిండాండే</p>
+    </div>
+
+    <div class="universe-container">
+        <div class="sun" onclick="speak('sun')"></div>
+        
+        <div class="orbit-earth">
+            <div class="earth" onclick="speak('earth')">
+                <div class="orbit-moon">
+                    <div class="moon"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="insight-box" id="display-box">
+        <p id="insight-text">విశ్వాన్ని స్పర్శించండి... భవిష్యత్తును వినండి.</p>
+    </div>
+
+    <button class="voice-btn" onclick="speak('intro')">భవిష్యత్తును దర్శించండి</button>
+
+    <div class="footer-logo">
+        <p>© 2026 ఎస్ టి జి వి భవిష్యవాణి - మీ మార్గదర్శి</p>
+    </div>
+
+    <script>
+        // బ్రౌజర్ వాయిస్ సెట్టింగ్స్
+        let synth = window.speechSynthesis;
+        let isAudioInit = false;
+
+        function initAudio() {
+            isAudioInit = true;
+        }
+
+        function speak(type) {
+            let text = "";
+            let display = "";
+
+            switch(type) {
+                case 'sun':
+                    display = "సూర్యుడు: నీ ఆత్మశక్తిని మేల్కొలుపు. ప్రకాశానికి వెనుకాడకు.";
+                    text = "నేను కాలానికి సాక్షిని. నీలోని అజ్ఞానాన్ని దహించి, జ్ఞానాన్ని ప్రసాదించే అగ్నిని నేను!";
+                    break;
+                case 'earth':
+                    display = "భూమి: నీ బాధ్యతను గుర్తించు. నీ ప్రతి అడుగు ఒక కర్మ ఫలం.";
+                    text = "నీవు నా గర్భం నుండి పుట్టావు, నాలోనే కలుస్తావు. మధ్యలో ఉన్న ఈ కాలంలో ధర్మబద్ధంగా జీవించు.";
+                    break;
+                case 'intro':
+                    display = "భవిష్యవాణి సిద్ధంగా ఉంది...";
+                    text = "ఓ మానవుడా విను! నీవు విశ్వంలో భాగం కాదు, నీలోనే ఒక విశ్వం ఉంది. ఎస్ టి జి వి నీ మార్గదర్శి.";
+                    break;
+                default:
+                    display = "విశ్వం నిశ్శబ్దంగా ఉంది...";
+                    text = "ధ్యానంలో ఉండు.";
+            }
+
+            document.getElementById('insight-text').innerText = display;
+
+            // గంభీరమైన వాయిస్ అనుకరణ (Pitch & Rate తగ్గించడం ద్వారా)
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'te-IN'; // తెలుగు వాయిస్
+            utterance.pitch = 0.5; // గంభీరత కోసం పిచ్ తగ్గించాం
+            utterance.rate = 0.8;  // నెమ్మదిగా చెప్పడానికి
+            
+            synth.cancel(); // పాత వాయిస్ ఆపి కొత్తది ప్లే చేయడం
+            synth.speak(utterance);
+        }
+
+        // రియల్ టైమ్ డేటా అప్‌డేట్ (ఉదాహరణకు గ్రహాల ప్రభావం)
+        setInterval(() => {
+            const effects = [
+                "ప్రస్తుతం సూర్యుని ప్రభావం అధికంగా ఉంది. నిర్ణయాలకు ఇది మంచి సమయం.",
+                "చంద్రుని గమనం వల్ల మనస్సు చంచలంగా ఉండవచ్చు. ప్రశాంతంగా ఉండండి.",
+                "భూమి తన అక్షంపై స్థిరంగా ఉంది. మీ పనులపై ఏకాగ్రత ఉంచండి."
+            ];
+            const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+            console.log("Real-time Update: " + randomEffect);
+        }, 10000);
+
+    </script>
+</body>
+</html>
