@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - Advanced AGI Vision</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    
+    <style>
+        :root { --neon: #00d2ff; --space: #00050a; --pink: #ff0055; }
+        body { margin: 0; background: var(--space); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 1s; display: flex; flex-direction: column; align-items: center; }
+        .hidden { opacity: 0; pointer-events: none; transform: scale(1.1); }
+        
+        /* Camera UI */
+        #v-wrap { position: relative; width: 95%; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; box-shadow: 0 0 20px rgba(0,210,255,0.3); }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .status-bar { width: 100%; padding: 15px; text-align: center; background: rgba(0,0,0,0.8); font-weight: bold; font-size: 1.1em; z-index: 10; }
+
+        /* Future Page - Deep Cosmic */
+        #future-page { background: radial-gradient(circle at center, #000810 0%, #000 70%); justify-content: center; }
+        
+        /* The Portal Visual */
+        .portal-container { position: relative; width: 180px; height: 180px; margin-bottom: 30px; cursor: pointer; }
+        .portal-ring { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--neon); border-bottom-color: var(--pink); animation: rotatePortal 4s linear infinite; box-shadow: 0 0 20px rgba(0,210,255,0.4); }
+        .portal-ring:nth-child(2) { animation-duration: 2.5s; animation-direction: reverse; transform: scale(0.85); border-top-color: #fff; border-bottom-color: var(--neon); }
+        .portal-core { position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; background: radial-gradient(circle, #fff 0%, var(--neon) 40%, #000 80%); border-radius: 50%; box-shadow: 0 0 40px var(--neon), 0 0 80px var(--pink); animation: pulseCore 1.5s ease-in-out infinite alternate; }
+
+        @keyframes rotatePortal { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseCore { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.15); opacity: 1; } }
+        
+        .prediction-box { width: 85%; padding: 25px; border: 1px solid rgba(0,210,255,0.25); border-radius: 20px; background: rgba(0, 5, 10, 0.6); backdrop-filter: blur(10px); min-height: 120px; text-align: center; }
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 12px 30px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; margin-top: 25px; transition: 0.3s; }
+        .btn:hover { background: var(--neon); color: black; }
+        
+        /* OCR Button */
+        #ocr-btn { position: absolute; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: var(--pink); color: white; font-size: 1.5em; border: none; box-shadow: 0 0 15px rgba(255,0,85,0.5); z-index: 20; cursor: pointer; }
+    </style>
+</head>
+<body onclick="init()" aria-label="స్క్రీన్ తాకి AI ప్రారంభించండి">
+
+    <div id="p1" class="page">
+        <div class="status-bar" id="info">స్క్రీన్ తాకి విశ్వ నేత్రం ప్రారంభించండి</div>
+        <div id="v-wrap">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+            <button id="ocr-btn" onclick="captureAndReadText(event)" aria-label="అక్షరాలను చదవండి">A</button>
+        </div>
+        <div class="status-bar"><button class="btn" onclick="toP2()">నేరుగా భవిష్యవాణికి</button></div>
+    </div>
+
+    <div id="p2" class="page hidden">
+        <h1 style="color:var(--neon); letter-spacing: 3px; text-shadow: 0 0 10px var(--neon); margin-bottom: 40px;">STGV కాలచక్రం</h1>
+        
+        <div class="portal-container" onclick="getRealFuture()">
+            <div class="portal-ring"></div>
+            <div class="portal-ring"></div>
+            <div class="portal-core"></div>
+        </div>
+
+        <div class="prediction-box">
+            <div id="date-info" style="color:var(--neon); font-size: 0.85em; margin-bottom: 10px; opacity: 0.7;"></div>
+            <div id="future-text" style="font-size: 1.15em; line-height: 1.6;">కాలచక్రాన్ని తాకి నేటి జ్ఞానాన్ని విను...</div>
+        </div>
+        <button class="btn" onclick="location.reload()">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let model, video, canvas, ctx, synth = window.speechSynthesis, active = false, isReadingText = false;
+        let lastSpokenTime = 0;
+
+        // తెలుగు అనువాదాలు (COCO-SSD కోసం మెరుగుపరిచినవి)
+        const teluguLabels = {
+            'person': 'మనిషి', 'bicycle': 'సైకిల్', 'car': 'కారు', 'motorcycle': 'బైక్',
+            'airplane': 'విమానం', 'bus': 'బస్సు', 'train': 'రైలు', 'truck': 'ట్రక్కు',
+            'traffic light': 'ట్రాఫిక్ సిగ్నల్', 'fire hydrant': 'ఫైర్ హైడ్రెంట్', 'stop sign': 'స్టాప్ సైన్',
+            'parking meter': 'పార్కింగ్ మీటర్', 'bench': 'బెంచ్', 'bird': 'పక్షి', 'cat': 'పిల్లి',
+            'dog': 'కుక్క', 'horse': 'గుర్రం', 'sheep': 'గొర్రె', 'cow': 'ఆవు', 'elephant': 'ఏనుగు',
+            'bear': 'ఎలుగుబంటి', 'zebra': 'జెబ్రా', 'giraffe': 'జిరాఫీ', 'backpack': 'బ్యాగ్',
+            'umbrella': 'గొడుగు', 'handbag': 'చేతి బ్యాగ్', 'tie': 'టై', 'suitcase': 'సూట్కేస్',
+            'frisbee': 'ఫ్రిస్బీ', 'skis': 'స్కిస్', 'snowboard': 'స్నోబోర్డ్', 'sports ball': 'బాల్',
+            'kite': 'గాలిపటం', 'baseball bat': 'బేస్బాల్ బ్యాట్', 'baseball glove': 'బేస్బాల్ గ్లోవ్',
+            'skateboard': 'స్కేట్బోర్డ్', 'surfboard': 'సర్ఫ్బోర్డ్', 'tennis racket': 'టెన్నిస్ రాకెట్',
+            'bottle': 'సీసా', 'wine glass': 'వైన్ గ్లాస్', 'cup': 'కప్పు', 'fork': 'ఫోర్క్',
+            'knife': 'చాకు', 'spoon': 'స్పూన్', 'bowl': 'గిన్నె', 'banana': 'అరటిపండు',
+            'apple': 'యాపిల్', 'sandwich': 'శాండ్విచ్', 'orange': 'నారింజ', 'broccoli': 'బ్రోకలీ',
+            'carrot': 'క్యారెట్', 'hot dog': 'హాట్ డాగ్', 'pizza': 'పిజ్జా', 'donut': 'డోనట్',
+            'cake': 'కేక్', 'chair': 'కుర్చీ', 'couch': 'సోఫా', 'potted plant': 'కుండీ',
+            'bed': 'మంచం', 'dining table': 'భోజనపు బల్ల', 'toilet': 'టాయిలెట్', 'tv': 'టీవీ',
+            'laptop': 'ల్యాప్‌టాప్', 'mouse': 'మౌస్', 'remote': 'రిమోట్', 'keyboard': 'కీబోర్డ్',
+            'cell phone': 'సెల్ ఫోన్', 'microwave': 'మైక్రోవేవ్', 'oven': 'ఓవెన్', 'toaster': 'టోస్టర్',
+            'sink': 'సింక్', 'refrigerator': 'ఫ్రిడ్జ్', 'book': 'పుస్తకం', 'clock': 'గడియారం',
+            'vase': 'ఫ్లవర్ వాజ్', 'scissors': 'కత్తెర', 'teddy bear': 'టెడ్డీ బేర్', 'hair drier': 'హెయిర్ డ్రైయర్',
+            'toothbrush': 'టూత్ బ్రష్'
+        };
+
+        async function init() {
+            if(active) return; active = true;
+            video = document.getElementById('webcam');
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                
+                // వీడియో మెటాడేటా లోడ్ అయిన తర్వాత క్యాన్వాస్ పరిమాణాన్ని సెట్ చేయడం
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                };
+
+                document.getElementById('info').innerText = "AI విశ్వ నేత్రం సిద్ధమవుతోంది...";
+                // COCO-SSD మోడల్‌ను లోడ్ చేయడం
+                model = await cocoSsd.load();
+                document.getElementById('info').innerText = "విశ్వ నేత్ర సిద్ధం";
+                speak("విశ్వ నేత్ర సిద్ధం. నేను మీకు దారి చూపిస్తాను. అక్షరాలను చదవడానికి కుడి వైపు ఉన్న బటన్‌ను నొక్కండి.");
+                loop();
+            } catch(e) { 
+                alert("కెమెరా అనుమతి అవసరం"); 
+                speak("దయచేసి కెమెరా అనుమతి ఇవ్వండి.");
+            }
+        }
+
+        async function loop() {
+            if(!document.getElementById('p2').classList.contains('hidden') || isReadingText) return;
+            
+            // క్యాన్వాస్‌ను శుభ్రపరచడం
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const predictions = await model.detect(video);
+            
+            if(predictions.length > 0) {
+                let infoDisplay = document.getElementById('info');
+                infoDisplay.innerText = "గుర్తిస్తున్నాను...";
+                
+                // అత్యధిక స్కోరు ఉన్న మొదటి వస్తువును మాత్రమే పరిగణించడం (అంధుల కన్ఫ్యూజన్ తగ్గించడానికి)
+                // కానీ, అన్నింటినీ క్యాన్వాస్ మీద గీయడం
+                let closestObject = predictions[0];
+                let currentItem = closestObject.class;
+                let prob = closestObject.score;
+
+                // క్యాన్వాస్ మీద అన్ని వస్తువుల చుట్టూ బాక్సులు గీయడం
+                predictions.forEach(prediction => {
+                    const [x, y, width, height] = prediction.bbox;
+                    ctx.strokeStyle = var('--neon');
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(x, y, width, height);
+                    
+                    ctx.fillStyle = var('--neon');
+                    ctx.font = '20px Arial';
+                    const telName = teluguLabels[prediction.class] || prediction.class;
+                    ctx.fillText(telName, x, y > 20 ? y - 10 : y + 20);
+                });
+
+                if(prob > 0.60) { // కచ్చితత్వం ఎక్కువగా ఉంటేనే చెప్పాలి
+                    const [x, y, width, height] = closestObject.bbox;
+                    const centerX = x + width / 2;
+                    const videoWidth = video.videoWidth;
+                    
+                    // వస్తువు స్థానం లెక్కించడం (ఎడమ, మధ్య, కుడి)
+                    let position = "మధ్యలో";
+                    if (centerX < videoWidth / 3) position = "ఎడమ వైపు";
+                    else if (centerX > (videoWidth / 3) * 2) position = "కుడి వైపు";
+                    
+                    let telName = teluguLabels[currentItem] || currentItem;
+                    let message = `మీకు ${position} ${telName} ఉంది.`;
+                    
+                    // అడ్డంకి గుర్తింపు మరియు హెచ్చరిక
+                    const obstacleClasses = ['chair', 'table', 'couch', 'bed', 'car', 'motorcycle', 'bus', 'train', 'truck', 'person', 'dog', 'cat'];
+                    if(obstacleClasses.includes(currentItem) && (width * height > (canvas.width * canvas.height * 0.2))) {
+                        if (navigator.vibrate) navigator.vibrate(500); // 500ms వైబ్రేషన్
+                        message = `జాగ్రత్త! మీకు ${position} ${telName} అడ్డంకి ఉంది. దారి మార్చుకోండి.`;
+                        infoDisplay.style.color = "red";
+                    } else {
+                        infoDisplay.style.color = "var(--neon)";
+                    }
+
+                    // ప్రతి 3.5 సెకన్లకు ఒకసారి మాత్రమే మాట్లాడటం
+                    let now = Date.now();
+                    if (now - lastSpokenTime > 3500) {
+                        speak(message);
+                        lastSpokenTime = now;
+                    }
+                    infoDisplay.innerText = telName;
+                } 
+            }
+            requestAnimationFrame(loop); // నిరంతరం చెక్ చేయడం
+        }
+
+        // Tesseract.js ఉపయోగించి OCR (Text Reading) ఫంక్షన్
+        async function captureAndReadText(event) {
+            event.stopPropagation(); // init() ఫంక్షన్ మళ్ళీ కాల్ కాకుండా ఆపడానికి
+            if(isReadingText) return;
+            isReadingText = true;
+            synth.cancel();
+            speak("చిత్రాన్ని విశ్లేషిస్తున్నాను. దయచేసి ఆగండి.");
+            document.getElementById('info').innerText = "అక్షరాలను చదువుతున్నాను...";
+            document.getElementById('ocr-btn').style.background = "gray";
+
+            // వీడియో నుండి చిత్రాన్ని క్యాప్చర్ చేయడానికి తాత్కాలిక క్యాన్వాస్
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            try {
+                // Tesseract.js తో OCR - ఇంగ్లీష్ కోసం
+                const result = await Tesseract.recognize(tempCanvas, 'eng', { logger: m => console.log(m) });
+                const text = result.data.text.trim();
+                
+                if (text) {
+                    speak("గుర్తించిన అక్షరాలు: " + text);
+                    document.getElementById('info').innerText = "చదవడం పూర్తయింది";
+                } else {
+                    speak("క్షమించండి, అక్షరాలు ఏమీ కనిపించడం లేదు.");
+                    document.getElementById('info').innerText = "అక్షరాలు లభించలేదు";
+                }
+            } catch (e) {
+                console.error(e);
+                speak("క్షమించండి, అక్షరాలను చదవడంలో ఇబ్బంది ఎదురైంది.");
+                document.getElementById('info').innerText = "OCR లోపం";
+            } finally {
+                isReadingText = false;
+                document.getElementById('ocr-btn').style.background = var('--pink');
+                setTimeout(loop, 2000); // 2 సెకన్ల తర్వాత మళ్ళీ గుర్తింపు ప్రారంభం
+            }
+        }
+
+        function toP2() { 
+            document.getElementById('p1').classList.add('hidden'); 
+            document.getElementById('p2').classList.remove('hidden');
+            document.getElementById('date-info').innerText = "తేదీ: " + new Date().toLocaleDateString('te-IN');
+            speak("భవిష్యవాణిలోకి స్వాగతం. కాలచక్రాన్ని తాకండి.", true);
+        }
+
+        function getRealFuture() {
+            const predictions = [
+                "సమయం ఎప్పుడూ ఒకేలా ఉండదు. నీ కష్టానికి తగిన ఫలితం త్వరలోనే లభిస్తుంది. అధైర్యపడకు.",
+                "నీ చుట్టూ ఉన్న ప్రపంచం నిన్ను గమనిస్తోంది. ఈరోజు నీవు చేసే చిన్న మంచి పని, రేపు నీకు పెద్ద సంతోషాన్ని ఇస్తుంది.",
+                "గ్రహాల స్థితి మారుతోంది. నీలో దాగి ఉన్న శక్తినీ గుర్తించు. విజయం నీకు చాలా దగ్గరలో ఉంది.",
+                "గతం గురించి ఆలోచించడం ఆపేయ్. వర్తమానంలో జీవించు. ఈరోజు నీవు తీసుకునే నిర్ణయమే నీ భవిష్యత్తును మారుస్తుంది.",
+                "నీ సంకల్పం చాలా బలమైనది. అడ్డంకులు ఎదురైనా సరే, నీ దారిలో నీవు సాగిపో. విశ్వం నీకు తోడుగా ఉంటుంది.",
+                "ఈరోజు సాయంత్రం ఒక కొత్త పరిచయం నీ జీవితంలో సానుకూల మార్పును తీసుకువస్తుంది.",
+                "ఆలోచనలను అదుపులో ఉంచుకో. ప్రశాంతమైన మనస్సుతో మాత్రమే సరైన నిర్ణయాలు తీసుకోగలవు."
+            ];
+
+            let pick = predictions[Math.floor(Math.random() * predictions.length)];
+            document.getElementById('future-text').innerText = pick;
+            
+            // విజువల్ ఫ్లాష్ ఎఫెక్ట్
+            const core = document.querySelector('.portal-core');
+            core.style.boxShadow = "0 0 100px #fff, 0 0 200px var(--pink)";
+            setTimeout(() => core.style.boxShadow = "0 0 40px var(--neon), 0 0 80px var(--pink)", 800);
+
+            speak(pick, true);
+        }
+
+        function speak(txt, grave=false) {
+            synth.cancel();
+            let u = new SpeechSynthesisUtterance(txt);
+            u.lang = 'te-IN'; // తెలుగు కోసం
+            u.pitch = grave ? 0.6 : 1.0; 
+            u.rate = 0.85; 
+            synth.speak(u);
+        }
+    </script>
+</body>
+</html>
