@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - True AGI Vision</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <style>
+        :root { --neon: #00d2ff; --space: #00050a; --pink: #ff0055; }
+        body { margin: 0; background: var(--space); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 1s; display: flex; flex-direction: column; align-items: center; }
+        .hidden { opacity: 0; pointer-events: none; transform: scale(1.1); }
+        
+        /* Camera UI */
+        #v-wrap { position: relative; width: 90%; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; box-shadow: 0 0 20px rgba(0,210,255,0.3); }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .status-bar { width: 100%; padding: 20px; text-align: center; background: rgba(0,0,0,0.8); font-weight: bold; font-size: 1.1em; }
+
+        /* Future Page - Deep Cosmic */
+        #future-page { background: radial-gradient(circle at center, #000810 0%, #000 70%); justify-content: center; }
+        
+        /* The Portal Visual */
+        .portal-container { position: relative; width: 180px; height: 180px; margin-bottom: 30px; cursor: pointer; }
+        .portal-ring { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--neon); border-bottom-color: var(--pink); animation: rotatePortal 4s linear infinite; box-shadow: 0 0 20px rgba(0,210,255,0.4); }
+        .portal-ring:nth-child(2) { animation-duration: 2.5s; animation-direction: reverse; transform: scale(0.85); border-top-color: #fff; border-bottom-color: var(--neon); }
+        .portal-core { position: absolute; top: 25%; left: 25%; width: 50%; height: 50%; background: radial-gradient(circle, #fff 0%, var(--neon) 40%, #000 80%); border-radius: 50%; box-shadow: 0 0 40px var(--neon), 0 0 80px var(--pink); animation: pulseCore 1.5s ease-in-out infinite alternate; }
+
+        @keyframes rotatePortal { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseCore { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.15); opacity: 1; } }
+        
+        .prediction-box { width: 85%; padding: 25px; border: 1px solid rgba(0,210,255,0.25); border-radius: 20px; background: rgba(0, 5, 10, 0.6); backdrop-filter: blur(10px); min-height: 120px; text-align: center; }
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 12px 30px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; margin-top: 25px; transition: 0.3s; }
+        .btn:hover { background: var(--neon); color: black; }
+    </style>
+</head>
+<body onclick="init()">
+
+    <div id="p1" class="page">
+        <div class="status-bar" id="info">స్క్రీన్ తాకి విశ్వ నేత్రం ప్రారంభించండి</div>
+        <div id="v-wrap"><video id="webcam" autoplay playsinline muted></video></div>
+        <div class="status-bar"><button class="btn" onclick="toP2()">నేరుగా భవిష్యవాణికి</button></div>
+    </div>
+
+    <div id="p2" class="page hidden">
+        <h1 style="color:var(--neon); letter-spacing: 3px; text-shadow: 0 0 10px var(--neon); margin-bottom: 40px;">STGV కాలచక్రం</h1>
+        
+        <div class="portal-container" onclick="getRealFuture()">
+            <div class="portal-ring"></div>
+            <div class="portal-ring"></div>
+            <div class="portal-core"></div>
+        </div>
+
+        <div class="prediction-box">
+            <div id="date-info" style="color:var(--neon); font-size: 0.85em; margin-bottom: 10px; opacity: 0.7;"></div>
+            <div id="future-text" style="font-size: 1.15em; line-height: 1.6;">కాలచక్రాన్ని తాకి నేటి జ్ఞానాన్ని విను...</div>
+        </div>
+        <button class="btn" onclick="location.reload()">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let model, video, synth = window.speechSynthesis, active = false;
+
+        // తెలుగు అనువాదాలు
+        const teluguLabels = {
+            'mobile phone': 'సెల్ ఫోన్', 'laptop': 'ల్యాప్‌టాప్', 'water bottle': 'నీళ్ల సీసా',
+            'chair': 'కుర్చీ', 'door': 'తలుపు', 'wall': 'గోడ', 'person': 'మనిషి',
+            'cup': 'కప్పు', 'keyboard': 'కీబోర్డ్', 'spectacles': 'కళ్లజోడు', 'table': 'బల్ల'
+        };
+
+        async function init() {
+            if(active) return; active = true;
+            video = document.getElementById('webcam');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                document.getElementById('info').innerText = "AI శక్తి లోడ్ అవుతోంది...";
+                model = await mobilenet.load();
+                document.getElementById('info').innerText = "విశ్వ నేత్ర సిద్ధం";
+                speak("విశ్వ నేత్ర సిద్ధం. నేను మీకు దారి చూపిస్తాను.");
+                loop();
+            } catch(e) { 
+                alert("కెమెరా అనుమతి అవసరం"); 
+                speak("దయచేసి కెమెరా అనుమతి ఇవ్వండి.");
+            }
+        }
+
+        async function loop() {
+            if(!document.getElementById('p2').classList.contains('hidden')) return;
+            
+            const res = await model.classify(video);
+            if(res.length > 0) {
+                let item = res[0].className.toLowerCase();
+                let prob = res[0].probability;
+
+                if(prob > 0.40) {
+                    let infoDisplay = document.getElementById('info');
+                    
+                    // 1. అడ్డంకి గుర్తింపు
+                    if(item.includes('wall') || item.includes('door') || item.includes('stair') || item.includes('pillar')) {
+                        speak("ముందు అడ్డంకి ఉంది, జాగ్రత్తగా పక్కకు తప్పుకోండి.");
+                        infoDisplay.style.color = "red";
+                        infoDisplay.innerText = "అడ్డంకి గుర్తించాను";
+                    } 
+                    // 2. ఖాళీ దారి గుర్తింపు
+                    else if(item.includes('floor') || item.includes('sidewalk') || item.includes('pavement') || item.includes('grass')) {
+                        speak("ముందు దారి బాగుంది, సాగండి.");
+                        infoDisplay.style.color = "var(--neon)";
+                        infoDisplay.innerText = "దారి బాగుంది";
+                    }
+                    // 3. సాధారణ వస్తువులు
+                    else {
+                        let shortName = item.split(',')[0];
+                        let telName = teluguLabels[shortName] || shortName;
+                        speak("మీ ముందు " + telName + " ఉంది.");
+                        infoDisplay.style.color = "white";
+                        infoDisplay.innerText = telName;
+                    }
+                } 
+            }
+            setTimeout(loop, 3500); // 3.5 సెకన్ల విరామం
+        }
+
+        function toP2() { 
+            document.getElementById('p1').classList.add('hidden'); 
+            document.getElementById('p2').classList.remove('hidden');
+            document.getElementById('date-info').innerText = "తేదీ: " + new Date().toLocaleDateString('te-IN');
+            speak("భవిష్యవాణిలోకి స్వాగతం. కాలచక్రాన్ని తాకండి.", true);
+        }
+
+        function getRealFuture() {
+            const predictions = [
+                "సమయం ఎప్పుడూ ఒకేలా ఉండదు. నీ కష్టానికి తగిన ఫలితం త్వరలోనే లభిస్తుంది. అధైర్యపడకు.",
+                "నీ చుట్టూ ఉన్న ప్రపంచం నిన్ను గమనిస్తోంది. ఈరోజు నీవు చేసే చిన్న మంచి పని, రేపు నీకు పెద్ద సంతోషాన్ని ఇస్తుంది.",
+                "గ్రహాల స్థితి మారుతోంది. నీలో దాగి ఉన్న శక్తినీ గుర్తించు. విజయం నీకు చాలా దగ్గరలో ఉంది.",
+                "గతం గురించి ఆలోచించడం ఆపేయ్. వర్తమానంలో జీవించు. ఈరోజు నీవు తీసుకునే నిర్ణయమే నీ భవిష్యత్తును మారుస్తుంది.",
+                "నీ సంకల్పం చాలా బలమైనది. అడ్డంకులు ఎదురైనా సరే, నీ దారిలో నీవు సాగిపో. విశ్వం నీకు తోడుగా ఉంటుంది.",
+                "ఈరోజు సాయంత్రం ఒక కొత్త పరిచయం నీ జీవితంలో సానుకూల మార్పును తీసుకువస్తుంది.",
+                "ఆలోచనలను అదుపులో ఉంచుకో. ప్రశాంతమైన మనస్సుతో మాత్రమే సరైన నిర్ణయాలు తీసుకోగలవు."
+            ];
+
+            let pick = predictions[Math.floor(Math.random() * predictions.length)];
+            document.getElementById('future-text').innerText = pick;
+            
+            // విజువల్ ఫ్లాష్ ఎఫెక్ట్
+            const core = document.querySelector('.portal-core');
+            core.style.boxShadow = "0 0 100px #fff, 0 0 200px var(--pink)";
+            setTimeout(() => core.style.boxShadow = "0 0 40px var(--neon), 0 0 80px var(--pink)", 800);
+
+            speak(pick, true);
+        }
+
+        function speak(txt, grave=false) {
+            synth.cancel();
+            let u = new SpeechSynthesisUtterance(txt);
+            u.lang = 'te-IN';
+            u.pitch = grave ? 0.6 : 1.0; 
+            u.rate = 0.85; 
+            synth.speak(u);
+        }
+    </script>
+</body>
+</html>
