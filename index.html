@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - విశ్వ నేత్ర & భవిష్యవాణి</title>
+    <style>
+        :root {
+            --bg-color: #000205;
+            --neon-blue: #00d2ff;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* పేజీల సెటప్ */
+        .page {
+            position: absolute;
+            width: 100%; height: 100%;
+            transition: opacity 1s ease-in-out, transform 1s;
+        }
+
+        .hidden { opacity: 0; pointer-events: none; transform: scale(0.9); }
+
+        /* --- పేజీ 1: విశ్వ నేత్ర (అంధుల కోసం) --- */
+        #vishwa-netra {
+            display: flex; flex-direction: column;
+            background: radial-gradient(circle at center, #0a1a2f 0%, #000 100%);
+        }
+
+        .touch-grid { display: flex; flex: 1; }
+
+        .grid-box {
+            flex: 1; border: 1px solid rgba(0, 210, 255, 0.1);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1.2em; font-weight: bold;
+            color: rgba(255,255,255,0.2);
+        }
+
+        .grid-box:active { background: rgba(0, 210, 255, 0.1); }
+
+        .footer-nav {
+            height: 80px; display: flex; align-items: center; justify-content: center;
+            background: #000; border-top: 1px solid #222;
+        }
+
+        .nav-btn {
+            background: none; border: 2px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 10px 30px; border-radius: 20px;
+            cursor: pointer; font-weight: bold; box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* --- పేజీ 2: భవిష్యవాణి (HD కాస్మిక్) --- */
+        #bhavishyvani {
+            background: #000;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .stars {
+            position: absolute; width: 100%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            z-index: -1; opacity: 0.5;
+        }
+
+        .universe-container {
+            position: relative; height: 70vh; width: 100%;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .sun {
+            width: 110px; height: 110px;
+            background: radial-gradient(circle, #ffcc00, #ff4500);
+            border-radius: 50%; box-shadow: 0 0 70px #ff4500;
+            z-index: 10; cursor: pointer;
+        }
+
+        .orbit-earth {
+            position: absolute; width: 420px; height: 420px;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 50%;
+            animation: rotate 60s linear infinite;
+        }
+
+        .earth {
+            width: 50px; height: 50px;
+            background: radial-gradient(circle at 30% 30%, #2b65ec, #000);
+            border-radius: 50%; position: absolute; top: 50%; left: -25px;
+            box-shadow: 0 0 20px #2b65ec; cursor: pointer;
+        }
+
+        .orbit-moon {
+            position: absolute; width: 90px; height: 90px;
+            border-radius: 50%; top: -20px; left: -20px;
+            animation: rotate 15s linear infinite;
+        }
+
+        .moon {
+            width: 15px; height: 15px; background: #ddd;
+            border-radius: 50%; position: absolute; top: 50%; left: -7px;
+            box-shadow: 0 0 10px white; cursor: pointer;
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .insight-box {
+            background: rgba(0, 210, 255, 0.05); border: 1px solid var(--neon-blue);
+            padding: 15px; width: 85%; max-width: 500px; border-radius: 10px;
+            margin-top: -30px;
+        }
+
+    </style>
+</head>
+<body onclick="initAudio()">
+
+    <div id="vishwa-netra" class="page">
+        <div style="padding:20px; color:var(--neon-blue); font-weight:bold;">STGV విశ్వ నేత్ర: సహాయకారి</div>
+        
+        <div class="touch-grid">
+            <div class="grid-box" onmouseover="announce('ఎడమ వైపు దారి ఖాళీగా ఉంది')" onclick="announce('ఎడమ వైపు అంతా శుభం. ముందుకు సాగండి')">ఎడమ</div>
+            <div class="grid-box" style="border-left:1px solid #222; border-right:1px solid #222;" 
+                 onmouseover="announce('మధ్యలో గుర్తు తెలియని వస్తువు ఉంది')" onclick="switchToBhavishyvani('unknown')">మధ్య</div>
+            <div class="grid-box" onmouseover="announce('కుడి వైపు గోడ ఉంది')" onclick="announce('కుడి వైపు అడ్డంకి ఉంది. జాగ్రత్త')">కుడి</div>
+        </div>
+
+        <div class="footer-nav">
+            <button class="nav-btn" onclick="switchToBhavishyvani('button')">భవిష్యవాణి కాలజ్ఞానం</button>
+        </div>
+    </div>
+
+    <div id="bhavishyvani" class="page hidden">
+        <div class="stars"></div>
+        <h1 style="color:var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); margin-top:30px;">ఎస్ టి జి వి: భవిష్యవాణి</h1>
+        
+        <div class="universe-container">
+            <div class="sun" onclick="speak('sun')"></div>
+            <div class="orbit-earth">
+                <div class="earth" onclick="speak('earth')">
+                    <div class="orbit-moon" onclick="event.stopPropagation(); speak('moon')">
+                        <div class="moon"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-box">
+            <p id="insight-text" style="color:#00d2ff;">విశ్వాన్ని స్పర్శించండి... గంభీరమైన భవిష్యవాణిని వినండి.</p>
+        </div>
+        
+        <button class="nav-btn" style="margin-top:20px;" onclick="location.reload()">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let synth = window.speechSynthesis;
+        let isStarted = false;
+
+        function initAudio() { if(!isStarted) { announce("STGV కి స్వాగతం. అంధుల కోసం పై భాగం, ఇతరుల కోసం క్రింద బటన్ ఉంది."); isStarted = true; } }
+
+        function announce(msg) {
+            let utterance = new SpeechSynthesisUtterance(msg);
+            utterance.lang = 'te-IN';
+            utterance.rate = 0.9;
+            synth.cancel();
+            synth.speak(utterance);
+        }
+
+        function switchToBhavishyvani(trigger) {
+            let msg = trigger === 'unknown' ? 
+                "ఈ వస్తువు రహస్యం నాకు తెలియదు. దీని అంతరార్థం కాలజ్ఞానంలో చూద్దాం." : 
+                "భవిష్యవాణి కాలజ్ఞానంలోకి ప్రవేశిస్తున్నాము. సిద్ధంగా ఉండండి.";
+            
+            announce(msg);
+            
+            setTimeout(() => {
+                document.getElementById('vishwa-netra').classList.add('hidden');
+                document.getElementById('bhavishyvani').classList.remove('hidden');
+                announce("స్వాగతం. ఇది ఎస్ టి జి వి భవిష్యవాణి. సూర్య, చంద్ర, భూమి గ్రహాలను తాకండి.");
+            }, 3000);
+        }
+
+        function speak(type) {
+            let text = "";
+            if(type === 'sun') text = "నేను కాలానికి సాక్షిని. నీలోని అజ్ఞానాన్ని దహించి, జ్ఞానాన్ని ప్రసాదించే అగ్నిని నేను!";
+            else if(type === 'earth') text = "ఓ మానవుడా, నీవు నా గర్భం నుండి పుట్టావు, నాలోనే కలుస్తావు. మధ్యలో ఉన్న ఈ కాలంలో ధర్మబద్ధంగా జీవించు.";
+            else if(type === 'moon') text = "నీ మనసులోని అలజడి నాకు తెలుసు. ప్రశాంతంగా ఉండు, విజయం నీదే.";
+
+            document.getElementById('insight-text').innerText = text;
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'te-IN';
+            utterance.pitch = 0.4; // గంభీరమైన వాయిస్
+            utterance.rate = 0.75;
+            synth.cancel();
+            synth.speak(utterance);
+        }
+    </script>
+</body>
+</html>
