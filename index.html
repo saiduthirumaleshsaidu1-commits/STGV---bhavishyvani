@@ -1,121 +1,131 @@
+
 <!DOCTYPE html>
 <html lang="te">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STGV - అడ్వాన్స్‌డ్ ఏఐ కాలజ్ఞానం</title>
+    <title>STGV - True AI Vision & Future</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     <style>
-        :root { --neon: #00d2ff; --gold: #ffcc00; }
-        body { margin: 0; background: #000; color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
-        .page { position: absolute; width: 100%; height: 100%; transition: 0.8s ease-in-out; display: flex; flex-direction: column; }
-        .hidden { opacity: 0; pointer-events: none; transform: translateY(-20px); }
+        :root { --neon: #00d2ff; --gold: #ffcc00; --deep: #00050a; }
+        body { margin: 0; background: var(--deep); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+        .hidden { opacity: 0; pointer-events: none; transform: scale(1.1) translateY(-20px); }
         
         /* విశ్వ నేత్ర UI */
-        #v-wrap { position: relative; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; }
+        #v-wrap { position: relative; flex: 1; border: 2px solid var(--neon); margin: 15px; border-radius: 25px; overflow: hidden; box-shadow: 0 0 25px rgba(0,210,255,0.2); }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .status { padding: 15px; text-align: center; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--neon); }
-
+        .status-header { padding: 15px; text-align: center; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--neon); z-index: 10; }
+        
         /* భవిష్యవాణి UI */
         #p2 { background: radial-gradient(circle at center, #001a33 0%, #000 100%); align-items: center; justify-content: center; text-align: center; }
         .sun-hd { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #fff, #ff4500, #900); box-shadow: 0 0 100px #ff4500; cursor: pointer; animation: pulse 3s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
         
-        .prediction-box { width: 85%; margin-top: 30px; padding: 20px; border: 1px solid var(--neon); border-radius: 20px; background: rgba(0,210,255,0.1); backdrop-filter: blur(10px); min-height: 120px; color: #fff; line-height: 1.6; }
-        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 12px 30px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        .prediction-card { width: 85%; margin-top: 30px; padding: 25px; border: 1px solid var(--neon); border-radius: 25px; background: rgba(0,210,255,0.1); backdrop-filter: blur(15px); min-height: 160px; display: flex; flex-direction: column; justify-content: center; }
+        #future-msg { font-size: 1.2em; line-height: 1.7; color: #e0f7ff; text-shadow: 0 0 5px rgba(0,210,255,0.5); }
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 12px 35px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; margin-top: 25px; text-transform: uppercase; transition: 0.3s; }
+        .btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
     </style>
 </head>
-<body onclick="startSTGV()">
+<body onclick="activateSTGV()">
 
     <div id="p1" class="page">
-        <div class="status">
-            <h2 style="margin:0; color:var(--neon);">STGV విశ్వ నేత్ర</h2>
-            <div id="ai-label" style="font-size: 0.9em;">నొక్కి ప్రారంభించండి</div>
+        <div class="status-header">
+            <h2 style="margin:0; color:var(--neon); letter-spacing: 1px;">STGV విశ్వ నేత్ర</h2>
+            <div id="ai-info" style="font-size: 0.9em; margin-top: 5px;">స్క్రీన్ తాకి AI ప్రారంభించండి</div>
         </div>
         <div id="v-wrap">
-            <video id="vid" autoplay playsinline muted></video>
+            <video id="webcam" autoplay playsinline muted></video>
         </div>
-        <div class="status">
-            <button class="btn" onclick="toP2()">నేరుగా భవిష్యవాణి</button>
+        <div class="status-header" style="border-top: 2px solid var(--neon); border-bottom: none;">
+            <button class="btn" onclick="manualToP2()">నేరుగా కాలజ్ఞానం</button>
         </div>
     </div>
 
     <div id="p2" class="page hidden">
-        <h1 style="color:var(--neon); text-shadow: 0 0 15px var(--neon);">STGV భవిష్యవాణి</h1>
-        <div class="sun-hd" onclick="tellFuture()"></div>
-        <div class="prediction-box">
-            <div id="future-output">సూర్యుడిని తాకి నీ నేటి కాలజ్ఞానం విను...</div>
+        <h1 style="color:var(--neon); text-shadow: 0 0 20px var(--neon); margin-bottom: 10px;">STGV భవిష్యవాణి</h1>
+        <div class="sun-hd" onclick="generateFuture()"></div>
+        <div class="prediction-card">
+            <div id="future-msg">సూర్యుడిని తాకి నీ నేటి కాలజ్ఞానం విను...</div>
         </div>
         <button class="btn" onclick="location.reload()">మళ్ళీ మొదటికి</button>
     </div>
 
     <script>
-        let m, v, s = window.speechSynthesis, active = false;
+        let model, video, synth = window.speechSynthesis, isLive = false;
 
-        async function startSTGV() {
-            if(active) return; active = true;
-            v = document.getElementById('vid');
+        async function activateSTGV() {
+            if(isLive) return; isLive = true;
+            video = document.getElementById('webcam');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                v.srcObject = stream;
-                document.getElementById('ai-label').innerText = "AI సిద్ధం అవుతోంది...";
-                m = await mobilenet.load();
-                document.getElementById('ai-label').innerText = "AI గమనిస్తోంది...";
+                video.srcObject = stream;
+                document.getElementById('ai-info').innerText = "AI లోడ్ అవుతోంది...";
+                model = await mobilenet.load();
+                document.getElementById('ai-info').innerText = "విశ్వ నేత్ర సిద్ధం - గమనిస్తున్నాను";
                 speak("విశ్వ నేత్ర సిద్ధం. దారిని గమనిస్తున్నాను.");
-                runAI();
-            } catch(e) { alert("కెమెరా పర్మిషన్ ఇవ్వండి"); }
+                runDetection();
+            } catch(e) { 
+                document.getElementById('ai-info').innerText = "కెమెరా అనుమతి ఇవ్వండి";
+            }
         }
 
-        async function runAI() {
+        async function runDetection() {
             if(!document.getElementById('p2').classList.contains('hidden')) return;
-            const res = await m.classify(v);
-            if(res.length > 0) {
-                let name = res[0].className.toLowerCase();
-                let confidence = res[0].probability;
+            const predictions = await model.classify(video);
+            
+            if(predictions.length > 0) {
+                let name = predictions[0].className.toLowerCase();
+                let score = predictions[0].probability;
 
-                // వస్తువును 50% కంటే ఎక్కువ ఖచ్చితత్వంతో గుర్తిస్తేనే దారి చెప్పాలి
-                if(confidence > 0.50) {
-                    document.getElementById('ai-label').innerText = "గుర్తించాను: " + name;
-                    if(name.includes('wall') || name.includes('door') || name.includes('chair')) {
+                // కేవలం 65% కంటే ఎక్కువ ఖచ్చితత్వం ఉంటేనే మాట్లాడాలి (False jumping నిరోధించడానికి)
+                if(score > 0.65) {
+                    document.getElementById('ai-info').innerText = "గుర్తించాను: " + name;
+                    if(name.includes('wall') || name.includes('door') || name.includes('obstacle')) {
                         speak("ముందు అడ్డంకి ఉంది. దారి మార్చుకోండి.");
                     } else {
-                        speak("దారి బాగుంది. సాగండి.");
+                        speak("దారి బాగుంది. ధైర్యంగా ముందుకు సాగండి.");
                     }
                 } 
-                // ఏమీ అర్థం కాకపోతేనే భవిష్యవాణి
-                else if(confidence < 0.15) {
-                    speak("దీని గురించి నాకు ఏమీ తెలియదు. ఇది ఒక రహస్యం. కాలజ్ఞానంలో విశ్లేషిద్దాం.", true);
-                    setTimeout(toP2, 6000); return;
+                // అస్సలు అర్థం కాకపోతే (చాలా తక్కువ స్కోర్ ఉంటేనే) కాలజ్ఞానం లోకి వెళ్తుంది
+                else if(score < 0.10) {
+                    speak("ఈ వస్తువు ఒక రహస్యం. కాలజ్ఞానంలో దీని విశ్లేషణ చూద్దాం.", true);
+                    setTimeout(manualToP2, 6000); 
+                    return;
                 }
             }
-            setTimeout(runAI, 4500);
+            setTimeout(runDetection, 5000);
         }
 
-        function toP2() { 
+        function manualToP2() { 
             document.getElementById('p1').classList.add('hidden'); 
             document.getElementById('p2').classList.remove('hidden');
-            speak("భవిష్యవాణిలోకి స్వాగతం. నీ కాలచక్రాన్ని తెలుసుకో.", true);
+            speak("భవిష్యవాణిలోకి స్వాగతం. నీ నేటి కాలచక్రాన్ని తెలుసుకో.", true);
         }
 
-        function tellFuture() {
-            // ఇది కేవలం మాటలు కాదు, ఒక లాజిక్ తో కూడిన భవిష్యత్తు
-            const predictions = [
-                "నీ సంకల్పం చాలా గొప్పది. రాబోయే 24 గంటల్లో నీవు అనుకున్న ఒక ముఖ్యమైన పని పూర్తవుతుంది.",
-                "కాల చక్రం నీ వైపు తిరుగుతోంది. ధైర్యంగా అడుగు వేయి, విజయం నీదే.",
-                "నేడు నీ నక్షత్ర బలం బాగుంది. కొత్త ఆలోచనలకు ఇది శుభ సమయం.",
+        function generateFuture() {
+            const list = [
+                "నీ సంకల్పం దృఢంగా ఉంది. రాబోయే 24 గంటల్లో నీవు అనుకున్న ఒక ముఖ్యమైన పని విజయవంతం అవుతుంది.",
+                "కాల చక్రం నీ వైపు తిరుగుతోంది. ధైర్యంగా అడుగు వేయి, విజయం నీదే అవుతుంది.",
+                "నేడు నీ నక్షత్ర బలం చాలా బాగుంది. కొత్త నిర్ణయాలకు ఇది అత్యంత శుభ సమయం.",
                 "శ్రమ నీది, ఫలితం విశ్వానిది. ఈరోజు సాయంత్రం లోపు నీకు ఒక శుభవార్త అందుతుంది.",
-                "నీ లోని శక్తే నీకు శ్రీరామరక్ష. అపరిచితుల విషయంలో కొంచెం జాగ్రత్తగా ఉండు."
+                "నీ లోని శక్తే నీకు శ్రీరామరక్ష. అపరిచితుల విషయంలో కొంచెం మెలకువగా ఉండటం మంచిది.",
+                "నీవు పడుతున్న కష్టానికి తగిన ప్రతిఫలం త్వరలోనే లభిస్తుంది. ఓపిక నీ ఆయుధం."
             ];
-            let pick = predictions[Math.floor(Math.random() * predictions.length)];
-            document.getElementById('future-output').innerText = pick;
+            let pick = list[Math.floor(Math.random() * list.length)];
+            document.getElementById('future-msg').innerText = pick;
             speak(pick, true);
         }
 
-        function speak(txt, grave=false) {
-            let u = new SpeechSynthesisUtterance(txt); u.lang = 'te-IN';
-            u.pitch = grave ? 0.35 : 0.9; u.rate = 0.8;
-            s.cancel(); s.speak(u);
+        function speak(text, isGrave = false) {
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'te-IN';
+            utterance.pitch = isGrave ? 0.35 : 0.9; // గంభీరమైన వాయిస్
+            utterance.rate = 0.85;
+            synth.cancel();
+            synth.speak(utterance);
         }
     </script>
 </body>
