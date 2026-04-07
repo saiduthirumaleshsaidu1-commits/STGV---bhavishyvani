@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV - అడ్వాన్స్‌డ్ ఏఐ కాలజ్ఞానం</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <style>
+        :root { --neon: #00d2ff; --gold: #ffcc00; }
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 0.8s ease-in-out; display: flex; flex-direction: column; }
+        .hidden { opacity: 0; pointer-events: none; transform: translateY(-20px); }
+        
+        /* విశ్వ నేత్ర UI */
+        #v-wrap { position: relative; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .status { padding: 15px; text-align: center; background: rgba(0,0,0,0.8); border-bottom: 2px solid var(--neon); }
+
+        /* భవిష్యవాణి UI */
+        #p2 { background: radial-gradient(circle at center, #001a33 0%, #000 100%); align-items: center; justify-content: center; text-align: center; }
+        .sun-hd { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #fff, #ff4500, #900); box-shadow: 0 0 100px #ff4500; cursor: pointer; animation: pulse 3s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        .prediction-box { width: 85%; margin-top: 30px; padding: 20px; border: 1px solid var(--neon); border-radius: 20px; background: rgba(0,210,255,0.1); backdrop-filter: blur(10px); min-height: 120px; color: #fff; line-height: 1.6; }
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 12px 30px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body onclick="startSTGV()">
+
+    <div id="p1" class="page">
+        <div class="status">
+            <h2 style="margin:0; color:var(--neon);">STGV విశ్వ నేత్ర</h2>
+            <div id="ai-label" style="font-size: 0.9em;">నొక్కి ప్రారంభించండి</div>
+        </div>
+        <div id="v-wrap">
+            <video id="vid" autoplay playsinline muted></video>
+        </div>
+        <div class="status">
+            <button class="btn" onclick="toP2()">నేరుగా భవిష్యవాణి</button>
+        </div>
+    </div>
+
+    <div id="p2" class="page hidden">
+        <h1 style="color:var(--neon); text-shadow: 0 0 15px var(--neon);">STGV భవిష్యవాణి</h1>
+        <div class="sun-hd" onclick="tellFuture()"></div>
+        <div class="prediction-box">
+            <div id="future-output">సూర్యుడిని తాకి నీ నేటి కాలజ్ఞానం విను...</div>
+        </div>
+        <button class="btn" onclick="location.reload()">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let m, v, s = window.speechSynthesis, active = false;
+
+        async function startSTGV() {
+            if(active) return; active = true;
+            v = document.getElementById('vid');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                v.srcObject = stream;
+                document.getElementById('ai-label').innerText = "AI సిద్ధం అవుతోంది...";
+                m = await mobilenet.load();
+                document.getElementById('ai-label').innerText = "AI గమనిస్తోంది...";
+                speak("విశ్వ నేత్ర సిద్ధం. దారిని గమనిస్తున్నాను.");
+                runAI();
+            } catch(e) { alert("కెమెరా పర్మిషన్ ఇవ్వండి"); }
+        }
+
+        async function runAI() {
+            if(!document.getElementById('p2').classList.contains('hidden')) return;
+            const res = await m.classify(v);
+            if(res.length > 0) {
+                let name = res[0].className.toLowerCase();
+                let confidence = res[0].probability;
+
+                // వస్తువును 50% కంటే ఎక్కువ ఖచ్చితత్వంతో గుర్తిస్తేనే దారి చెప్పాలి
+                if(confidence > 0.50) {
+                    document.getElementById('ai-label').innerText = "గుర్తించాను: " + name;
+                    if(name.includes('wall') || name.includes('door') || name.includes('chair')) {
+                        speak("ముందు అడ్డంకి ఉంది. దారి మార్చుకోండి.");
+                    } else {
+                        speak("దారి బాగుంది. సాగండి.");
+                    }
+                } 
+                // ఏమీ అర్థం కాకపోతేనే భవిష్యవాణి
+                else if(confidence < 0.15) {
+                    speak("దీని గురించి నాకు ఏమీ తెలియదు. ఇది ఒక రహస్యం. కాలజ్ఞానంలో విశ్లేషిద్దాం.", true);
+                    setTimeout(toP2, 6000); return;
+                }
+            }
+            setTimeout(runAI, 4500);
+        }
+
+        function toP2() { 
+            document.getElementById('p1').classList.add('hidden'); 
+            document.getElementById('p2').classList.remove('hidden');
+            speak("భవిష్యవాణిలోకి స్వాగతం. నీ కాలచక్రాన్ని తెలుసుకో.", true);
+        }
+
+        function tellFuture() {
+            // ఇది కేవలం మాటలు కాదు, ఒక లాజిక్ తో కూడిన భవిష్యత్తు
+            const predictions = [
+                "నీ సంకల్పం చాలా గొప్పది. రాబోయే 24 గంటల్లో నీవు అనుకున్న ఒక ముఖ్యమైన పని పూర్తవుతుంది.",
+                "కాల చక్రం నీ వైపు తిరుగుతోంది. ధైర్యంగా అడుగు వేయి, విజయం నీదే.",
+                "నేడు నీ నక్షత్ర బలం బాగుంది. కొత్త ఆలోచనలకు ఇది శుభ సమయం.",
+                "శ్రమ నీది, ఫలితం విశ్వానిది. ఈరోజు సాయంత్రం లోపు నీకు ఒక శుభవార్త అందుతుంది.",
+                "నీ లోని శక్తే నీకు శ్రీరామరక్ష. అపరిచితుల విషయంలో కొంచెం జాగ్రత్తగా ఉండు."
+            ];
+            let pick = predictions[Math.floor(Math.random() * predictions.length)];
+            document.getElementById('future-output').innerText = pick;
+            speak(pick, true);
+        }
+
+        function speak(txt, grave=false) {
+            let u = new SpeechSynthesisUtterance(txt); u.lang = 'te-IN';
+            u.pitch = grave ? 0.35 : 0.9; u.rate = 0.8;
+            s.cancel(); s.speak(u);
+        }
+    </script>
+</body>
+</html>
