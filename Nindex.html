@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STGV Pro - విశ్వ నేత్ర & Gemini</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        :root { --neon: #00d2ff; --warn: #ff4500; --space: #00050a; --gemini: #8e75ff; }
+        body { margin: 0; background: var(--space); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; height: 100vh; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
+        .hidden { opacity: 0; pointer-events: none; transform: scale(1.1); }
+        
+        .header { padding: 15px; text-align: center; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--neon); box-shadow: 0 4px 15px rgba(0,210,255,0.3); }
+        #v-wrap { position: relative; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--neon); animation: scan 3s linear infinite; box-shadow: 0 0 15px var(--neon); }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+        .btn-group { display: flex; justify-content: space-around; padding: 10px; background: #000; border-top: 2px solid var(--neon); }
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 10px 20px; border-radius: 30px; background: none; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 0.9em; }
+        .btn-gemini { border-color: var(--gemini); color: var(--gemini); box-shadow: 0 0 10px var(--gemini); }
+        .btn:active { transform: scale(0.9); }
+
+        /* భవిష్యవాణి UI */
+        #p2 { background: radial-gradient(circle at center, #001a33 0%, #000 100%); align-items: center; justify-content: center; text-align: center; }
+        .sun-hd { width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, #fff, #ffcc00, #ff4500, #900); box-shadow: 0 0 80px #ff4500; cursor: pointer; animation: glow 4s infinite; }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 50px #ff4500; transform: scale(1); } 50% { box-shadow: 0 0 100px #ffcc00; transform: scale(1.05); } }
+        
+        .card { width: 80%; margin-top: 20px; padding: 20px; border: 1px solid var(--neon); border-radius: 20px; background: rgba(0,210,255,0.05); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body onclick="initApp()">
+
+    <div id="p1" class="page">
+        <div class="header">
+            <h2 style="margin:0; color:var(--neon);">STGV విశ్వ నేత్ర Pro</h2>
+            <div id="ai-status">ప్రారంభించడానికి తాకండి</div>
+        </div>
+        <div id="v-wrap">
+            <video id="cam" autoplay playsinline muted></video>
+            <div class="scanner-line"></div>
+        </div>
+        <div id="obj-label" style="text-align:center; color:white; padding: 10px; background: rgba(0,0,0,0.8);">గమనిస్తున్నాను...</div>
+        <div class="btn-group">
+            <button class="btn btn-gemini" onclick="openGemini()">AI సాయం</button>
+            <button class="btn" onclick="toFuture()">భవిష్యవాణి</button>
+        </div>
+    </div>
+
+    <div id="p2" class="page hidden">
+        <h1 style="color:var(--neon);">STGV భవిష్యవాణి</h1>
+        <div class="sun-hd" onclick="getFuture()"></div>
+        <div class="card">
+            <div id="f-msg">సూర్యుడిని తాకి నేటి కాలజ్ఞానం విను...</div>
+        </div>
+        <button class="btn" onclick="location.reload()" style="margin-top:20px;">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let model, video, synth = window.speechSynthesis, active = false;
+
+        async function initApp() {
+            if(active) return; active = true;
+            video = document.getElementById('cam');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                document.getElementById('ai-status').innerText = "AI ఇంజిన్ లోడ్ అవుతోంది...";
+                model = await cocoSsd.load();
+                document.getElementById('ai-status').innerText = "సిద్ధంగా ఉంది";
+                speak("విశ్వ నేత్ర మరియు జెమిని కనెక్ట్ అయ్యాయి. దారిని విశ్లేషిస్తున్నాను.");
+                process();
+            } catch(e) { alert("కెమెరా పర్మిషన్ ఇవ్వండి"); }
+        }
+
+        async function process() {
+            if(!document.getElementById('p2').classList.contains('hidden')) return;
+            const res = await model.detect(video);
+            
+            if(res.length > 0) {
+                let itm = res[0];
+                let name = itm.class;
+                let box = itm.bbox;
+                
+                // తెలుగు అనువాదాలు
+                let translations = { 'person': 'మనిషి', 'chair': 'కుర్చీ', 'bottle': 'బాటిల్', 'cell phone': 'ఫోన్', 'laptop': 'ల్యాప్‌టాప్', 'door': 'ద్వారం' };
+                let tel = translations[name] || name;
+
+                let vw = video.videoWidth || 640;
+                let cx = box[0] + (box[2]/2);
+                let area = (box[2] * box[3]) / (vw * (video.videoHeight || 480));
+
+                let dir = "ముందు";
+                if((cx/vw) < 0.35) dir = "ఎడమ వైపు";
+                else if((cx/vw) > 0.65) dir = "కుడి వైపు";
+
+                let dist = area > 0.4 ? ". చాలా దగ్గరగా, ఆగండి!" : (area > 0.2 ? ". దగ్గరలో ఉంది." : "");
+
+                document.getElementById('obj-label').innerText = tel + " (" + dir + ")" + dist;
+                speak(tel + " " + dir + dist);
+            }
+            setTimeout(process, 4000); 
+        }
+
+        // జెమిని యాప్‌ను ఓపెన్ చేసే ఫంక్షన్
+        function openGemini() {
+            speak("జెమిని యాక్టివేట్ అవుతోంది. హే గూగుల్ అని పిలిచి సహాయం కోరండి.");
+            // Android Intent to launch Gemini
+            setTimeout(() => {
+                window.location.href = "intent://#Intent;scheme=googleassistant;package=com.google.android.apps.bard;end";
+            }, 2000);
+        }
+
+        function toFuture() { 
+            document.getElementById('p1').classList.add('hidden'); 
+            document.getElementById('p2').classList.remove('hidden'); 
+            speak("కాల చక్రంలోకి స్వాగతం.");
+        }
+
+        function getFuture() {
+            const msgs = [
+                "నేడు నీవు చేసే ప్రయత్నం సఫలమవుతుంది.",
+                "కాలం నీ వెంటే ఉంది, ధైర్యంగా ముందుకు సాగు.",
+                "రాబోయే కొద్ది సేపట్లో ఒక శుభవార్త వింటావు.",
+                "నీ లోని శక్తిని నమ్ముకో, విజయం నీదే."
+            ];
+            let msg = msgs[Math.floor(Math.random()*msgs.length)];
+            document.getElementById('f-msg').innerText = msg;
+            speak(msg, true);
+        }
+
+        function speak(t, g=false) {
+            if(synth.speaking) return;
+            let u = new SpeechSynthesisUtterance(t); u.lang = 'te-IN';
+            u.pitch = g ? 0.5 : 1.0; u.rate = 0.9;
+            synth.speak(u);
+        }
+    </script>
+</body>
+</html>
