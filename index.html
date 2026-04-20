@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STGV Pro - విశ్వ నేత్ర & OCR</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
+    <style>
+        :root { --neon: #00d2ff; --warn: #ff4500; --space: #00050a; }
+        body { margin: 0; background: var(--space); color: white; font-family: sans-serif; overflow: hidden; height: 100vh; touch-action: none; }
+        .page { position: absolute; width: 100%; height: 100%; transition: 0.6s ease; display: flex; flex-direction: column; }
+        .hidden { opacity: 0; pointer-events: none; transform: translateY(20px); }
+        
+        .header { padding: 15px; text-align: center; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--neon); }
+        #v-wrap { position: relative; flex: 1; border: 2px solid var(--neon); margin: 10px; border-radius: 20px; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        .scanner-line { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--neon); animation: scan 3s linear infinite; box-shadow: 0 0 15px var(--neon); }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+        .overlay-msg { position: absolute; bottom: 20px; width: 100%; text-align: center; background: rgba(0,0,0,0.7); padding: 10px 0; font-weight: bold; color: var(--neon); }
+        
+        .btn { border: 2px solid var(--neon); color: var(--neon); padding: 15px; border-radius: 10px; background: rgba(0,210,255,0.1); font-weight: bold; margin: 10px; cursor: pointer; }
+    </style>
+</head>
+<body id="main-body">
+
+    <div id="p1" class="page">
+        <div class="header">
+            <h2 style="margin:0; color:var(--neon);">STGV విశ్వ నేత్ర Pro</h2>
+            <div id="ai-status" style="font-size: 0.8em;">ప్రారంభించడానికి తాకండి</div>
+        </div>
+        
+        <div id="v-wrap">
+            <video id="cam" autoplay playsinline muted></video>
+            <div class="scanner-line"></div>
+            <div id="obj-label" class="overlay-msg">సిద్ధంగా ఉన్నాను...</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; padding: 5px;">
+            <button class="btn" onclick="scanText()">అక్షరాలు చదువు</button>
+            <button class="btn" onclick="toFuture()">భవిష్యవాణి</button>
+        </div>
+        <p style="text-align: center; font-size: 0.7em; margin-bottom: 10px;">(స్క్రీన్‌పై లాంగ్ ప్రెస్ చేస్తే అక్షరాలు చదువుతాను)</p>
+    </div>
+
+    <div id="p2" class="page hidden" style="justify-content: center; align-items: center; text-align: center; background: #000;">
+        <h2 style="color:var(--neon);">కాలజ్ఞానం</h2>
+        <div onclick="getFuture()" style="width:120px; height:120px; border-radius:50%; background:orange; box-shadow: 0 0 50px orange; margin: 30px auto;"></div>
+        <div id="f-msg" style="padding: 20px; font-size: 1.1em;">సూర్యుడిని తాకండి...</div>
+        <button class="btn" onclick="location.reload()">మళ్ళీ మొదటికి</button>
+    </div>
+
+    <script>
+        let model, video, synth = window.speechSynthesis, active = false;
+        let pressTimer;
+
+        // 1. యాప్ ప్రారంభం
+        async function initApp() {
+            if(active) return; active = true;
+            video = document.getElementById('cam');
+            document.getElementById('ai-status').innerText = "కెమెరా మరియు AI లోడ్ అవుతోంది...";
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                model = await cocoSsd.load();
+                document.getElementById('ai-status').innerText = "విశ్వ నేత్ర సిద్ధం";
+                speak("విశ్వ నేత్ర ప్రో ప్రారంభమైంది. వస్తువులను గుర్తిస్తున్నాను. అక్షరాలు చదవాలంటే స్క్రీన్‌ను నొక్కి పట్టుకోండి.");
+                process();
+            } catch(e) { 
+                speak("కెమెరా పర్మిషన్ అవసరం.");
+            }
+        }
+
+        // 2. వస్తువుల గుర్తింపు (Object Detection)
+        async function process() {
+            if(!document.getElementById('p2').classList.contains('hidden')) return;
+            const res = await model.detect(video);
+            
+            if(res.length > 0) {
+                let itm = res[0];
+                let tel = translate(itm.class);
+                let vw = video.videoWidth || 640;
+                let cx = itm.bbox[0] + (itm.bbox[2]/2);
+                let area = (itm.bbox[2] * itm.bbox[3]) / (vw * (video.videoHeight || 480));
+
+                let dir = "ముందు";
+                if((cx/vw) < 0.35) dir = "ఎడమ వైపు";
+                else if((cx/vw) > 0.65) dir = "కుడి వైపు";
+
+                let alertMsg = (area > 0.4) ? ". చాలా దగ్గరగా ఉంది, జాగ్రత్త!" : "";
+                
+                document.getElementById('obj-label').innerText = tel + " " + dir + alertMsg;
+                speak(tel + " " + dir + alertMsg);
+            }
+            setTimeout(process, 5000); 
+        }
+
+        // 3. OCR ఫంక్షన్ (అక్షరాలు చదవడం)
+        async function scanText() {
+            speak("అక్షరాలను గుర్తిస్తున్నాను, ఫోన్‌ను ఐదు సెకన్లు స్థిరంగా ఉంచండి.");
+            document.getElementById('obj-label').innerText = "చదువుతున్నాను...";
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            try {
+                const { data: { text } } = await Tesseract.recognize(canvas.toDataURL(), 'tel+eng');
+                if(text.trim()) {
+                    speak("అందులో ఇలా ఉంది: " + text);
+                    document.getElementById('obj-label').innerText = text.substring(0, 30) + "...";
+                } else {
+                    speak("అక్షరాలు ఏమీ కనిపించడం లేదు.");
+                }
+            } catch (err) {
+                speak("క్షమించండి, అక్షరాలు చదవడంలో అంతరాయం కలిగింది.");
+            }
+        }
+
+        // 4. యూజర్ ఇంటరాక్షన్ (Long Press)
+        const body = document.getElementById('main-body');
+        body.addEventListener('touchstart', (e) => {
+            if(!active) { initApp(); return; }
+            pressTimer = setTimeout(scanText, 2000); // 2 సెకన్లు నొక్కితే OCR
+        });
+        body.addEventListener('touchend', () => clearTimeout(pressTimer));
+
+        // సహాయక ఫంక్షన్లు
+        function translate(n) {
+            const dict = { 'person': 'మనిషి', 'cell phone': 'ఫోన్', 'chair': 'కుర్చీ', 'bottle': 'బాటిల్', 'cup': 'కప్పు', 'laptop': 'లాప్ టాప్' };
+            return dict[n] || n;
+        }
+
+        function speak(t) {
+            synth.cancel();
+            let u = new SpeechSynthesisUtterance(t);
+            u.lang = 'te-IN'; u.rate = 0.9;
+            synth.speak(u);
+        }
+
+        function toFuture() {
+            document.getElementById('p1').classList.add('hidden');
+            document.getElementById('p2').classList.remove('hidden');
+            speak("కాల చక్రంలోకి స్వాగతం. మీ నేటి కాలాన్ని తెలుసుకోండి.");
+        }
+
+        function getFuture() {
+            const msgs = ["నేడు నీవు చేసే ప్రయత్నం సఫలమవుతుంది.", "కాలం నీ వెంటే ఉంది. ముందుకు సాగు.", "రాబోయే కొద్ది సేపట్లో ఒక శుభవార్త వింటావు."];
+            let m = msgs[Math.floor(Math.random()*msgs.length)];
+            document.getElementById('f-msg').innerText = m;
+            speak(m);
+        }
+    </script>
+</body>
+</html>
