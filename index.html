@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STGV విశ్వ నేత్ర - అసిస్టెంట్</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <style>
+        :root { --neon: #00ffaa; --bg: #0d1117; }
+        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
+        #v-wrap { position: relative; height: 60vh; border-bottom: 3px solid var(--neon); background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .controls { height: 40vh; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; background: #161b22; }
+        .btn { background: #21262d; color: var(--neon); border: 2px solid var(--neon); border-radius: 15px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .status-bar { position: absolute; top: 0; width: 100%; background: rgba(0,255,170,0.2); padding: 10px; text-align: center; font-weight: bold; z-index: 10; }
+        .active-mic { animation: pulse 1.5s infinite; background: #ff4500 !important; color: white !important; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 69, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0); } }
+    </style>
+</head>
+<body>
+
+    <div id="v-wrap">
+        <div class="status-bar" id="status-text">అసిస్టెంట్ సిద్ధంగా ఉంది</div>
+        <video id="cam" autoplay playsinline muted></video>
+        <div id="qr-reader" style="display:none;"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="mic-btn" onclick="toggleVoiceControl()">వాయిస్ కంట్రోల్</button>
+        <button class="btn" onclick="scanText()">అక్షరాలు చదువు</button>
+        <button class="btn" onclick="scanBarcode()">బార్‌కోడ్ స్కాన్</button>
+        <button class="btn" onclick="location.reload()">రీసెట్</button>
+    </div>
+
+    <script>
+        let video, synth = window.speechSynthesis, recognition;
+        let isListening = false;
+
+        // 1. వాయిస్ కంట్రోల్ సెటప్ (Speech to Text)
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = 'te-IN'; // తెలుగు భాషా గుర్తింపు
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                handleCommand(command);
+            };
+        }
+
+        function toggleVoiceControl() {
+            const micBtn = document.getElementById('mic-btn');
+            if (!isListening) {
+                recognition.start();
+                isListening = true;
+                micBtn.classList.add('active-mic');
+                speak("వాయిస్ కంట్రోల్ ఆన్ చేయబడింది. చదువు లేదా స్కాన్ అని చెప్పండి.");
+            } else {
+                recognition.stop();
+                isListening = false;
+                micBtn.classList.remove('active-mic');
+                speak("వాయిస్ కంట్రోల్ ఆఫ్ చేయబడింది.");
+            }
+        }
+
+        function handleCommand(cmd) {
+            document.getElementById('status-text').innerText = "మీరు అన్నది: " + cmd;
+            if (cmd.includes("చదువు") || cmd.includes("read")) {
+                scanText();
+            } else if (cmd.includes("స్కాన్") || cmd.includes("scan") || cmd.includes("కోడ్")) {
+                scanBarcode();
+            } else if (cmd.includes("సహాయం") || cmd.includes("help")) {
+                speak("అక్షరాలు చదవడానికి చదువు అని, బార్ కోడ్ కోసం స్కాన్ అని చెప్పండి.");
+            }
+        }
+
+        // 2. బార్‌కోడ్ స్కాన్
+        function scanBarcode() {
+            speak("బార్‌కోడ్ స్కాన్ చేస్తున్నాను. వస్తువును కెమెరాకు మధ్యలో ఉంచండి.");
+            const html5QrCode = new Html5Qrcode("cam"); // కెమెరా స్ట్రీమ్ వాడుకుంటుంది
+            
+            const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            Html5Qrcode.scanFileOrStream(video, qrConfig).then(decodedText => {
+                speak("కోడ్ గుర్తించబడింది. కోడ్ నెంబర్: " + decodedText);
+                document.getElementById('status-text').innerText = "కోడ్: " + decodedText;
+            }).catch(err => {
+                // నిరంతర స్కానింగ్ కోసం ఇక్కడ ఎర్రర్ హ్యాండ్లింగ్
+            });
+        }
+
+        // 3. OCR (గతంలో చర్చించిన విధంగా మెరుగుపరచబడింది)
+        async function scanText() {
+            speak("గమనిస్తున్నాను. ఫోన్ కదపకండి.");
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth * 1.5;
+            canvas.height = video.videoHeight * 1.5;
+            const ctx = canvas.getContext('2d');
+            ctx.filter = 'contrast(1.5) grayscale(100%)';
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            try {
+                const result = await Tesseract.recognize(canvas.toDataURL(), 'eng+tel');
+                let text = result.data.text.trim();
+                if(text) {
+                    speak("ఇందులో ఇలా ఉంది: " + text);
+                    document.getElementById('status-text').innerText = text.substring(0, 40);
+                } else {
+                    speak("అక్షరాలు కనిపించడం లేదు.");
+                }
+            } catch (e) { speak("మళ్ళీ ప్రయత్నించండి."); }
+        }
+
+        // కెమెరా ప్రారంభం
+        async function startApp() {
+            video = document.getElementById('cam');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+        }
+
+        function speak(t) {
+            synth.cancel();
+            let u = new SpeechSynthesisUtterance(t);
+            u.lang = 'te-IN'; u.rate = 0.9;
+            synth.speak(u);
+        }
+
+        window.onload = startApp;
+    </script>
+</body>
+</html>
